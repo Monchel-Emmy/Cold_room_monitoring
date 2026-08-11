@@ -70,23 +70,23 @@ export default function ChamberCard({ chamber, liveReading, onEditThresholds }: 
           <h3 className="font-bold text-white text-sm">{chamber.name}</h3>
           <p className="text-xs text-slate-400 mt-0.5">Sensor: {chamber.sensorId}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {onEditThresholds && (
             <button
               type="button"
               onClick={() => onEditThresholds(chamber)}
-              className="p-1.5 rounded-lg border border-slate-600 bg-slate-900/60 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 transition-colors"
+              className="h-6 w-6 flex items-center justify-center rounded-md border border-slate-600 bg-slate-900/60 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 transition-colors"
               title="Edit chamber thresholds"
             >
-              <Pencil size={12} />
+              <Pencil size={11} />
             </button>
           )}
           {hasAlert && (
-            <span className="flex items-center gap-1 text-xs bg-red-500/15 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full">
-              <AlertTriangle size={10} /> Alert
+            <span className="flex items-center gap-1 text-[10px] font-medium bg-red-500/15 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded-full leading-none">
+              <AlertTriangle size={9} /> Alert
             </span>
           )}
-          <span className={`w-2.5 h-2.5 rounded-full ${
+          <span className={`w-2 h-2 rounded-full ${
             chamber.status === 'operational' ? 'bg-emerald-400' :
             chamber.status === 'maintenance'  ? 'bg-yellow-400' : 'bg-red-400'
           }`} />

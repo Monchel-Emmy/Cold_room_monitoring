@@ -12,7 +12,6 @@ export default function ColdRoomDetail() {
   const [room, setRoom]       = useState<ColdRoom | null>(null);
   const [chambers, setChambers] = useState<Chamber[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingChamber, setEditingChamber] = useState<Chamber | null>(null);
   const [chamberModal, setChamberModal] = useState<'create' | 'edit' | 'delete' | null>(null);
   const [selectedChamber, setSelectedChamber] = useState<Chamber | null>(null);
   const [chamberForm, setChamberForm] = useState<any>({
@@ -26,12 +25,6 @@ export default function ColdRoomDetail() {
     targetHumidityMin: 45,
     targetHumidityMax: 75,
     notes: '',
-  });
-  const [thresholdForm, setThresholdForm] = useState({
-    targetTempMin: 0,
-    targetTempMax: 0,
-    targetHumidityMin: 0,
-    targetHumidityMax: 0,
   });
   const [saving, setSaving] = useState(false);
   const { readings } = useLive();
@@ -49,16 +42,6 @@ export default function ColdRoomDetail() {
   };
 
   useEffect(() => { loadRoom(); }, [id]);
-
-  const openThresholdEditor = (chamber: Chamber) => {
-    setEditingChamber(chamber);
-    setThresholdForm({
-      targetTempMin: chamber.targetTempMin,
-      targetTempMax: chamber.targetTempMax,
-      targetHumidityMin: chamber.targetHumidityMin,
-      targetHumidityMax: chamber.targetHumidityMax,
-    });
-  };
 
   const openCreateChamber = () => {
     setChamberModal('create');
@@ -97,20 +80,6 @@ export default function ColdRoomDetail() {
   const openDeleteChamber = (chamber: Chamber) => {
     setSelectedChamber(chamber);
     setChamberModal('delete');
-  };
-
-  const saveThresholds = async () => {
-    if (!editingChamber) return;
-    setSaving(true);
-    try {
-      await api.updateChamber(editingChamber.id, thresholdForm);
-      setEditingChamber(null);
-      loadRoom();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSaving(false);
-    }
   };
 
   const saveChamber = async () => {
@@ -244,61 +213,33 @@ export default function ColdRoomDetail() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {chambers.map(ch => (
               <div key={String(ch.id)} className="relative">
-                <button
-                  type="button"
-                  onClick={() => openEditChamber(ch)}
-                  className="absolute right-3 top-3 z-10 p-1.5 rounded-lg border border-slate-600 bg-slate-900/70 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 transition-colors"
-                  title="Edit chamber"
-                >
-                  ✎
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openDeleteChamber(ch)}
-                  className="absolute right-12 top-3 z-10 p-1.5 rounded-lg border border-slate-600 bg-slate-900/70 text-slate-300 hover:border-red-500 hover:text-red-400 transition-colors"
-                  title="Delete chamber"
-                >
-                  🗑
-                </button>
+                <div className="absolute right-12 top-3 z-10 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => openEditChamber(ch)}
+                    className="h-6 w-6 flex items-center justify-center rounded-md border border-slate-600 bg-slate-900/70 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 transition-colors"
+                    title="Edit chamber"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openDeleteChamber(ch)}
+                    className="h-6 w-6 flex items-center justify-center rounded-md border border-slate-600 bg-slate-900/70 text-slate-300 hover:border-red-500 hover:text-red-400 transition-colors"
+                    title="Delete chamber"
+                  >
+                    🗑
+                  </button>
+                </div>
                 <ChamberCard
                   chamber={ch}
                   liveReading={readings.get(String(ch.id)) ?? null}
-                  onEditThresholds={openThresholdEditor}
                 />
               </div>
             ))}
           </div>
         )}
       </div>
-
-      <Modal open={Boolean(editingChamber)} title={`Edit thresholds: ${editingChamber?.name ?? ''}`} onClose={() => setEditingChamber(null)} size="md">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Temp min (°C)</label>
-              <input type="number" value={thresholdForm.targetTempMin} onChange={(e) => setThresholdForm({ ...thresholdForm, targetTempMin: Number(e.target.value) })} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Temp max (°C)</label>
-              <input type="number" value={thresholdForm.targetTempMax} onChange={(e) => setThresholdForm({ ...thresholdForm, targetTempMax: Number(e.target.value) })} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Humidity min (%)</label>
-              <input type="number" value={thresholdForm.targetHumidityMin} onChange={(e) => setThresholdForm({ ...thresholdForm, targetHumidityMin: Number(e.target.value) })} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Humidity max (%)</label>
-              <input type="number" value={thresholdForm.targetHumidityMax} onChange={(e) => setThresholdForm({ ...thresholdForm, targetHumidityMax: Number(e.target.value) })} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-3 mt-5">
-          <button onClick={() => setEditingChamber(null)} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded-xl transition-colors">Cancel</button>
-          <button onClick={saveThresholds} disabled={saving} className="flex-1 py-2 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2">
-            <Save size={15} /> {saving ? 'Saving...' : 'Save thresholds'}
-          </button>
-        </div>
-      </Modal>
 
       <Modal open={chamberModal === 'create' || chamberModal === 'edit'} title={chamberModal === 'create' ? 'Add Chamber' : 'Edit Chamber'} onClose={() => setChamberModal(null)} size="md">
         <div className="space-y-3">
@@ -340,6 +281,11 @@ export default function ColdRoomDetail() {
           </div>
         </div>
         <div className="flex gap-3 mt-5">
+          {chamberModal === 'edit' && selectedChamber && (
+            <button onClick={() => openDeleteChamber(selectedChamber)} className="px-3 py-2 bg-red-500/15 hover:bg-red-500/20 text-red-300 text-sm font-medium rounded-xl border border-red-500/30 transition-colors">
+              Delete
+            </button>
+          )}
           <button onClick={() => setChamberModal(null)} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded-xl transition-colors">Cancel</button>
           <button onClick={saveChamber} disabled={saving} className="flex-1 py-2 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">{saving ? 'Saving...' : 'Save'}</button>
         </div>
