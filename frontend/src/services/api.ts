@@ -1,3 +1,15 @@
+import type {
+  Alert,
+  AppUser,
+  AuthUser,
+  Chamber,
+  ColdRoom,
+  DashboardStats,
+  Hospital,
+  LiveReading,
+  Vaccine,
+} from '../types';
+
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`
   : '/api';
@@ -24,67 +36,67 @@ async function req<T>(url: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   // Auth
-  login:  (email: string, password: string) =>
-    req('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  me:     () => req('/auth/me'),
-  logout: () => req('/auth/logout', { method: 'POST' }),
+  login:  (email: string, password: string): Promise<{ token: string; user: AuthUser }> =>
+    req<{ token: string; user: AuthUser }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  me:     (): Promise<AuthUser> => req<AuthUser>('/auth/me'),
+  logout: (): Promise<{ success: boolean }> => req<{ success: boolean }>('/auth/logout', { method: 'POST' }),
 
   // Dashboard
-  getDashboard: () => req('/dashboard'),
+  getDashboard: (): Promise<DashboardStats> => req<DashboardStats>('/dashboard'),
 
   // Hospitals
-  getHospitals:    ()                        => req('/hospitals'),
-  getHospital:     (id: string)              => req(`/hospitals/${id}`),
-  createHospital:  (data: any)              => req('/hospitals', { method: 'POST', body: JSON.stringify(data) }),
-  updateHospital:  (id: string, data: any)  => req(`/hospitals/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteHospital:  (id: string)             => req(`/hospitals/${id}`, { method: 'DELETE' }),
+  getHospitals:    (): Promise<Hospital[]>                        => req<Hospital[]>('/hospitals'),
+  getHospital:     (id: string): Promise<Hospital>              => req<Hospital>(`/hospitals/${id}`),
+  createHospital:  (data: Partial<Hospital>): Promise<Hospital> => req<Hospital>('/hospitals', { method: 'POST', body: JSON.stringify(data) }),
+  updateHospital:  (id: string, data: Partial<Hospital>): Promise<Hospital> => req<Hospital>(`/hospitals/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteHospital:  (id: string): Promise<{ success: boolean }> => req<{ success: boolean }>(`/hospitals/${id}`, { method: 'DELETE' }),
 
   // Cold Rooms
-  getColdRooms:   (hospitalId?: string)     => req(`/cold-rooms${hospitalId ? `?hospitalId=${hospitalId}` : ''}`),
-  getColdRoom:    (id: string)              => req(`/cold-rooms/${id}`),
-  createColdRoom: (data: any)              => req('/cold-rooms', { method: 'POST', body: JSON.stringify(data) }),
-  updateColdRoom: (id: string, data: any)  => req(`/cold-rooms/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteColdRoom: (id: string)             => req(`/cold-rooms/${id}`, { method: 'DELETE' }),
+  getColdRooms:   (hospitalId?: string): Promise<ColdRoom[]>     => req<ColdRoom[]>(`/cold-rooms${hospitalId ? `?hospitalId=${hospitalId}` : ''}`),
+  getColdRoom:    (id: string): Promise<ColdRoom>              => req<ColdRoom>(`/cold-rooms/${id}`),
+  createColdRoom: (data: Partial<ColdRoom>): Promise<ColdRoom> => req<ColdRoom>('/cold-rooms', { method: 'POST', body: JSON.stringify(data) }),
+  updateColdRoom: (id: string, data: Partial<ColdRoom>): Promise<ColdRoom> => req<ColdRoom>(`/cold-rooms/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteColdRoom: (id: string): Promise<{ success: boolean }> => req<{ success: boolean }>(`/cold-rooms/${id}`, { method: 'DELETE' }),
 
   // Chambers
-  getChambers: (coldRoomId?: string, hospitalId?: string) => {
+  getChambers: (coldRoomId?: string, hospitalId?: string): Promise<Chamber[]> => {
     const p = new URLSearchParams();
     if (coldRoomId) p.set('coldRoomId', coldRoomId);
     if (hospitalId) p.set('hospitalId', hospitalId);
-    return req(`/chambers${p.toString() ? '?' + p : ''}`);
+    return req<Chamber[]>(`/chambers${p.toString() ? '?' + p : ''}`);
   },
-  getChamber:          (id: string)             => req(`/chambers/${id}`),
-  getChamberReadings:  (id: string, limit = 48) => req(`/chambers/${id}/readings?limit=${limit}`),
-  createChamber:  (data: any)             => req('/chambers', { method: 'POST', body: JSON.stringify(data) }),
-  updateChamber:  (id: string, data: any) => req(`/chambers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteChamber:  (id: string)            => req(`/chambers/${id}`, { method: 'DELETE' }),
+  getChamber:          (id: string): Promise<Chamber>             => req<Chamber>(`/chambers/${id}`),
+  getChamberReadings:  (id: string, limit = 48): Promise<LiveReading[]> => req<LiveReading[]>(`/chambers/${id}/readings?limit=${limit}`),
+  createChamber:  (data: Partial<Chamber>): Promise<Chamber> => req<Chamber>('/chambers', { method: 'POST', body: JSON.stringify(data) }),
+  updateChamber:  (id: string, data: Partial<Chamber>): Promise<Chamber> => req<Chamber>(`/chambers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteChamber:  (id: string): Promise<{ success: boolean }> => req<{ success: boolean }>(`/chambers/${id}`, { method: 'DELETE' }),
 
   // Vaccines
-  getVaccines: (f?: { chamberId?: string; coldRoomId?: string; hospitalId?: string; status?: string }) => {
+  getVaccines: (f?: { chamberId?: string; coldRoomId?: string; hospitalId?: string; status?: string }): Promise<Vaccine[]> => {
     const p = new URLSearchParams();
     if (f?.chamberId)  p.set('chamberId',  f.chamberId);
     if (f?.coldRoomId) p.set('coldRoomId', f.coldRoomId);
     if (f?.hospitalId) p.set('hospitalId', f.hospitalId);
     if (f?.status)     p.set('status',     f.status);
-    return req(`/vaccines${p.toString() ? '?' + p : ''}`);
+    return req<Vaccine[]>(`/vaccines${p.toString() ? '?' + p : ''}`);
   },
-  createVaccine:  (data: any)             => req('/vaccines', { method: 'POST', body: JSON.stringify(data) }),
-  updateVaccine:  (id: string, data: any) => req(`/vaccines/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteVaccine:  (id: string)            => req(`/vaccines/${id}`, { method: 'DELETE' }),
+  createVaccine:  (data: Partial<Vaccine>): Promise<Vaccine> => req<Vaccine>('/vaccines', { method: 'POST', body: JSON.stringify(data) }),
+  updateVaccine:  (id: string, data: Partial<Vaccine>): Promise<Vaccine> => req<Vaccine>(`/vaccines/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteVaccine:  (id: string): Promise<{ success: boolean }> => req<{ success: boolean }>(`/vaccines/${id}`, { method: 'DELETE' }),
 
   // Alerts
-  getAlerts: (hospitalId?: string, acknowledged?: boolean) => {
+  getAlerts: (hospitalId?: string, acknowledged?: boolean): Promise<Alert[]> => {
     const p = new URLSearchParams();
     if (hospitalId)              p.set('hospitalId',    hospitalId);
     if (acknowledged !== undefined) p.set('acknowledged', String(acknowledged));
-    return req(`/alerts${p.toString() ? '?' + p : ''}`);
+    return req<Alert[]>(`/alerts${p.toString() ? '?' + p : ''}`);
   },
-  acknowledgeAlert: (id: string) => req(`/alerts/${id}/acknowledge`, { method: 'PATCH' }),
-  deleteAlert:      (id: string) => req(`/alerts/${id}`, { method: 'DELETE' }),
+  acknowledgeAlert: (id: string): Promise<Alert> => req<Alert>(`/alerts/${id}/acknowledge`, { method: 'PATCH' }),
+  deleteAlert:      (id: string): Promise<{ success: boolean }> => req<{ success: boolean }>(`/alerts/${id}`, { method: 'DELETE' }),
 
   // Users (admin only)
-  getUsers:    ()                        => req('/users'),
-  createUser:  (data: any)              => req('/users', { method: 'POST', body: JSON.stringify(data) }),
-  updateUser:  (id: string, data: any)  => req(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteUser:  (id: string)             => req(`/users/${id}`, { method: 'DELETE' }),
+  getUsers:    (): Promise<AppUser[]>                        => req<AppUser[]>('/users'),
+  createUser:  (data: Partial<AppUser> & { password?: string }): Promise<AppUser> => req<AppUser>('/users', { method: 'POST', body: JSON.stringify(data) }),
+  updateUser:  (id: string, data: Partial<AppUser> & { password?: string }): Promise<AppUser> => req<AppUser>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteUser:  (id: string): Promise<{ success: boolean }> => req<{ success: boolean }>(`/users/${id}`, { method: 'DELETE' }),
 };
