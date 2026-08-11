@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Vaccine, Chamber, Hospital } from '../types';
 import Modal from '../components/Modal';
+import { TableSkeleton } from '../components/Skeleton';
 
 const EMPTY = { name: '', type: '', manufacturer: '', batchNumber: '', quantity: 0, unit: 'doses', chamberId: '', coldRoomId: '', hospitalId: '', expiryDate: '', status: 'active', storageRequirements: { tempMin: 2, tempMax: 8, humidityMin: 45, humidityMax: 75 } };
 
@@ -91,7 +92,7 @@ export default function Vaccines() {
     recalled: 'bg-red-500/15 text-red-400 border-red-500/30',
   };
 
-  if (vaccinesLoading || chambersLoading || hospitalsLoading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
+  if (vaccinesLoading || chambersLoading || hospitalsLoading) return <TableSkeleton />;
 
   return (
     <div className="space-y-6">

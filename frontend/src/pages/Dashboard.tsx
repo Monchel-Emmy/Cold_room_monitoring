@@ -4,6 +4,7 @@ import { Building2, Snowflake, FlaskConical, Syringe, Bell, AlertTriangle, Check
 import { api } from '../services/api';
 import { DashboardStats } from '../types';
 import StatCard from '../components/StatCard';
+import { PageSkeleton } from '../components/Skeleton';
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useQuery<DashboardStats>({
@@ -12,11 +13,7 @@ export default function Dashboard() {
     staleTime: 30_000,
   });
 
-  if (isLoading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-slate-400">Loading dashboard...</div>
-    </div>
-  );
+  if (isLoading) return <PageSkeleton />;
 
   if (!stats) return null;
 

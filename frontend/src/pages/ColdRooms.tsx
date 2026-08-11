@@ -6,6 +6,7 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { ColdRoom, Hospital } from '../types';
 import Modal from '../components/Modal';
+import { TableSkeleton } from '../components/Skeleton';
 
 const EMPTY = { name: '', hospitalId: '', type: 'walk_in_cooler', modelName: '', serialNumber: '', targetTempMin: 2, targetTempMax: 8, targetHumidityMin: 45, targetHumidityMax: 75, status: 'operational' };
 
@@ -68,7 +69,7 @@ export default function ColdRooms() {
   const typeLabel: Record<string, string> = { walk_in_cooler: 'Walk-in Cooler', refrigerator: 'Refrigerator', freezer: 'Freezer', ultra_cold: 'Ultra-Cold' };
   const statusColor: Record<string, string> = { operational: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', maintenance: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30', defective: 'bg-red-500/15 text-red-400 border-red-500/30' };
 
-  if (roomsLoading || hospitalsLoading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
+  if (roomsLoading || hospitalsLoading) return <TableSkeleton />;
 
   return (
     <div className="space-y-6">

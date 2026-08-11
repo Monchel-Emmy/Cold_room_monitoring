@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { AppUser, Hospital } from '../types';
 import Modal from '../components/Modal';
 import { Navigate } from 'react-router-dom';
+import { TableSkeleton } from '../components/Skeleton';
 
 const EMPTY = { name: '', email: '', password: '', role: 'viewer', hospitalId: '', status: 'active' };
 
@@ -74,7 +75,7 @@ export default function Users() {
     finally { setSaving(false); }
   };
 
-  if (usersLoading || hospitalsLoading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
+  if (usersLoading || hospitalsLoading) return <TableSkeleton />;
 
   return (
     <div className="space-y-6">

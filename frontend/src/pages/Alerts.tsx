@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Alert } from '../types';
 import Modal from '../components/Modal';
+import { TableSkeleton } from '../components/Skeleton';
 
 export default function Alerts() {
   const { isAtLeastManager } = useAuth();
@@ -50,7 +51,7 @@ export default function Alerts() {
   const active = alerts.filter(a => !a.acknowledged);
   const acked  = alerts.filter(a => a.acknowledged);
 
-  if (isLoading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
+  if (isLoading) return <TableSkeleton />;
 
   return (
     <div className="space-y-6">

@@ -5,6 +5,7 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Hospital } from '../types';
 import Modal from '../components/Modal';
+import { TableSkeleton } from '../components/Skeleton';
 
 const EMPTY = { name: '', type: 'hospital', region: '', district: '', address: '', contactName: '', contactPhone: '', status: 'active' };
 
@@ -65,7 +66,7 @@ export default function Hospitals() {
     </div>
   );
 
-  if (isLoading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
+  if (isLoading) return <TableSkeleton />;
 
   return (
     <div className="space-y-6">
