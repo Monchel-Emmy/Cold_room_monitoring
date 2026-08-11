@@ -1,4 +1,6 @@
-const BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`
+  : '/api';
 
 function getToken() {
   return localStorage.getItem('crm_token');
@@ -6,7 +8,7 @@ function getToken() {
 
 async function req<T>(url: string, options?: RequestInit): Promise<T> {
   const token = getToken();
-  const res = await fetch(BASE + url, {
+  const res = await fetch(API_BASE + url, {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
