@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-white;
+  }
+}
+
+@layer components {
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150;
+  }
+  .nav-link-active {
+    @apply bg-cyan-500/15 text-cyan-400 border border-cyan-500/20;
+  }
+  .nav-link-inactive {
+    @apply text-slate-400 hover:text-white hover:bg-slate-800/60;
+  }
+}
