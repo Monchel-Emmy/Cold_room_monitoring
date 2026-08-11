@@ -213,7 +213,7 @@ export default function ColdRoomDetail() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {chambers.map(ch => (
               <div key={String(ch.id)} className="relative">
-                <div className="absolute right-12 top-3 z-10 flex items-center gap-1.5">
+                <div className="absolute right-[4.5rem] top-7 z-10 flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => openEditChamber(ch)}
