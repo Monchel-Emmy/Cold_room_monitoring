@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, MapPin, Phone, Snowflake, Plus, Pencil, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -9,16 +10,21 @@ const EMPTY = { name: '', type: 'hospital', region: '', district: '', address: '
 
 export default function Hospitals() {
   const { isAdmin, isAtLeastManager } = useAuth();
-  const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [loading,   setLoading]   = useState(true);
+  const queryClient = useQueryClient();
+  const { data: hospitals = [], isLoading } = useQuery<Hospital[]>({
+    queryKey: ['hospitals'],
+    queryFn: () => api.getHospitals(),
+    staleTime: 60_000,
+  });
   const [modal,     setModal]     = useState<'create' | 'edit' | 'delete' | null>(null);
   const [selected,  setSelected]  = useState<Hospital | null>(null);
   const [form,      setForm]      = useState<any>(EMPTY);
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState('');
 
-  const load = () => api.getHospitals().then((d: any) => setHospitals(d)).catch(console.error).finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['hospitals'] });
+  };
 
   const openCreate = () => { setForm(EMPTY); setError(''); setModal('create'); };
   const openEdit   = (h: Hospital) => { setSelected(h); setForm({ name: h.name, type: h.type, region: h.region, district: h.district, address: h.address, contactName: h.contactName, contactPhone: h.contactPhone, status: h.status }); setError(''); setModal('edit'); };
@@ -31,7 +37,7 @@ export default function Hospitals() {
     try {
       if (modal === 'create') await api.createHospital(form);
       else if (modal === 'edit' && selected) await api.updateHospital(selected.id, form);
-      await load(); closeModal();
+      await refresh(); closeModal();
     } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
@@ -39,7 +45,7 @@ export default function Hospitals() {
   const del = async () => {
     if (!selected) return;
     setSaving(true);
-    try { await api.deleteHospital(selected.id); await load(); closeModal(); }
+    try { await api.deleteHospital(selected.id); await refresh(); closeModal(); }
     catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
@@ -59,7 +65,7 @@ export default function Hospitals() {
     </div>
   );
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
+  if (isLoading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
 
   return (
     <div className="space-y-6">

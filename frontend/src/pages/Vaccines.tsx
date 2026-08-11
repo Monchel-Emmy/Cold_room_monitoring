@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Syringe, Thermometer, Droplets, CheckCircle2, AlertTriangle, Clock, Plus, Pencil, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -9,25 +10,40 @@ const EMPTY = { name: '', type: '', manufacturer: '', batchNumber: '', quantity:
 
 export default function Vaccines() {
   const { isAtLeastTechnician, isAdmin } = useAuth();
-  const [vaccines,   setVaccines]   = useState<Vaccine[]>([]);
-  const [chambers,   setChambers]   = useState<Chamber[]>([]);
-  const [hospitals,  setHospitals]  = useState<Hospital[]>([]);
+  const queryClient = useQueryClient();
+
+  const { data: vaccines = [], isLoading: vaccinesLoading } = useQuery<Vaccine[]>({
+    queryKey: ['vaccines'],
+    queryFn: () => api.getVaccines(),
+    staleTime: 45_000,
+  });
+
+  const { data: chambers = [], isLoading: chambersLoading } = useQuery<Chamber[]>({
+    queryKey: ['chambers'],
+    queryFn: () => api.getChambers(),
+    staleTime: 45_000,
+  });
+
+  const { data: hospitals = [], isLoading: hospitalsLoading } = useQuery<Hospital[]>({
+    queryKey: ['hospitals'],
+    queryFn: () => api.getHospitals(),
+    staleTime: 60_000,
+  });
+
   const [filter,     setFilter]     = useState('');
-  const [loading,    setLoading]    = useState(true);
   const [modal,      setModal]      = useState<'create' | 'edit' | 'delete' | null>(null);
   const [selected,   setSelected]   = useState<Vaccine | null>(null);
   const [form,       setForm]       = useState<any>(EMPTY);
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState('');
 
-  const load = async () => {
+  const refresh = async () => {
     await Promise.all([
-      api.getVaccines().then((d: any) => setVaccines(d)),
-      api.getChambers().then((d: any) => setChambers(d)),
-      api.getHospitals().then((d: any) => setHospitals(d)),
-    ]).catch(console.error).finally(() => setLoading(false));
+      queryClient.invalidateQueries({ queryKey: ['vaccines'] }),
+      queryClient.invalidateQueries({ queryKey: ['chambers'] }),
+      queryClient.invalidateQueries({ queryKey: ['hospitals'] }),
+    ]);
   };
-  useEffect(() => { load(); }, []);
 
   // When chamberId changes, auto-fill coldRoomId and hospitalId
   const onChamberChange = (chamberId: string) => {
@@ -54,14 +70,14 @@ export default function Vaccines() {
     try {
       if (modal === 'create') await api.createVaccine(form);
       else if (modal === 'edit' && selected) await api.updateVaccine(selected.id, form);
-      await load(); closeModal();
+      await refresh(); closeModal();
     } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
 
   const del = async () => {
     if (!selected) return; setSaving(true);
-    try { await api.deleteVaccine(selected.id); await load(); closeModal(); }
+    try { await api.deleteVaccine(selected.id); await refresh(); closeModal(); }
     catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
@@ -75,7 +91,7 @@ export default function Vaccines() {
     recalled: 'bg-red-500/15 text-red-400 border-red-500/30',
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
+  if (vaccinesLoading || chambersLoading || hospitalsLoading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
 
   return (
     <div className="space-y-6">

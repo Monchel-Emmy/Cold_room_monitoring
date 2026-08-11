@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Users as UsersIcon, Plus, Pencil, Trash2, Shield, Building2 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -19,22 +20,31 @@ export default function Users() {
   const { isAdmin, user: me } = useAuth();
   if (!isAdmin) return <Navigate to="/" replace />;
 
-  const [users,     setUsers]     = useState<AppUser[]>([]);
-  const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [loading,   setLoading]   = useState(true);
+  const queryClient = useQueryClient();
+  const { data: users = [], isLoading: usersLoading } = useQuery<AppUser[]>({
+    queryKey: ['users'],
+    queryFn: () => api.getUsers(),
+    staleTime: 60_000,
+  });
+
+  const { data: hospitals = [], isLoading: hospitalsLoading } = useQuery<Hospital[]>({
+    queryKey: ['hospitals'],
+    queryFn: () => api.getHospitals(),
+    staleTime: 60_000,
+  });
+
   const [modal,     setModal]     = useState<'create' | 'edit' | 'delete' | null>(null);
   const [selected,  setSelected]  = useState<AppUser | null>(null);
   const [form,      setForm]      = useState<any>(EMPTY);
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState('');
 
-  const load = async () => {
+  const refresh = async () => {
     await Promise.all([
-      api.getUsers().then((d: any) => setUsers(d)),
-      api.getHospitals().then((d: any) => setHospitals(d)),
-    ]).catch(console.error).finally(() => setLoading(false));
+      queryClient.invalidateQueries({ queryKey: ['users'] }),
+      queryClient.invalidateQueries({ queryKey: ['hospitals'] }),
+    ]);
   };
-  useEffect(() => { load(); }, []);
 
   const openCreate = () => { setForm(EMPTY); setError(''); setModal('create'); };
   const openEdit   = (u: AppUser) => { setSelected(u); setForm({ name: u.name, email: u.email, password: '', role: u.role, hospitalId: u.hospitalId || '', status: u.status }); setError(''); setModal('edit'); };
@@ -52,19 +62,19 @@ export default function Users() {
       if (modal === 'edit' && !form.password) delete payload.password;
       if (modal === 'create') await api.createUser(payload);
       else if (modal === 'edit' && selected) await api.updateUser(selected.id, payload);
-      await load(); closeModal();
+      await refresh(); closeModal();
     } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
 
   const del = async () => {
     if (!selected) return; setSaving(true);
-    try { await api.deleteUser(selected.id); await load(); closeModal(); }
+    try { await api.deleteUser(selected.id); await refresh(); closeModal(); }
     catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
+  if (usersLoading || hospitalsLoading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
 
   return (
     <div className="space-y-6">

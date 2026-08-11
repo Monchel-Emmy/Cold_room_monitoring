@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Snowflake, Thermometer, ChevronRight, Building2, Plus, Pencil, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -10,22 +11,32 @@ const EMPTY = { name: '', hospitalId: '', type: 'walk_in_cooler', modelName: '',
 
 export default function ColdRooms() {
   const { isAtLeastManager, isAdmin } = useAuth();
-  const [rooms,      setRooms]      = useState<ColdRoom[]>([]);
-  const [hospitals,  setHospitals]  = useState<Hospital[]>([]);
-  const [loading,    setLoading]    = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data: rooms = [], isLoading: roomsLoading } = useQuery<ColdRoom[]>({
+    queryKey: ['cold-rooms'],
+    queryFn: () => api.getColdRooms(),
+    staleTime: 45_000,
+  });
+
+  const { data: hospitals = [], isLoading: hospitalsLoading } = useQuery<Hospital[]>({
+    queryKey: ['hospitals'],
+    queryFn: () => api.getHospitals(),
+    staleTime: 60_000,
+  });
+
   const [modal,      setModal]      = useState<'create' | 'edit' | 'delete' | null>(null);
   const [selected,   setSelected]   = useState<ColdRoom | null>(null);
   const [form,       setForm]       = useState<any>(EMPTY);
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState('');
 
-  const load = async () => {
+  const refresh = async () => {
     await Promise.all([
-      api.getColdRooms().then((d: any) => setRooms(d)),
-      api.getHospitals().then((d: any) => setHospitals(d)),
-    ]).catch(console.error).finally(() => setLoading(false));
+      queryClient.invalidateQueries({ queryKey: ['cold-rooms'] }),
+      queryClient.invalidateQueries({ queryKey: ['hospitals'] }),
+    ]);
   };
-  useEffect(() => { load(); }, []);
 
   const openCreate = () => { setForm({ ...EMPTY, hospitalId: hospitals[0]?.id || '' }); setError(''); setModal('create'); };
   const openEdit   = (r: ColdRoom) => { setSelected(r); setForm({ name: r.name, hospitalId: r.hospitalId, type: r.type, modelName: r.modelName, serialNumber: r.serialNumber, targetTempMin: r.targetTempMin, targetTempMax: r.targetTempMax, targetHumidityMin: r.targetHumidityMin, targetHumidityMax: r.targetHumidityMax, status: r.status }); setError(''); setModal('edit'); };
@@ -41,7 +52,7 @@ export default function ColdRooms() {
     try {
       if (modal === 'create') await api.createColdRoom(form);
       else if (modal === 'edit' && selected) await api.updateColdRoom(selected.id, form);
-      await load(); closeModal();
+      await refresh(); closeModal();
     } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
@@ -49,7 +60,7 @@ export default function ColdRooms() {
   const del = async () => {
     if (!selected) return;
     setSaving(true);
-    try { await api.deleteColdRoom(selected.id); await load(); closeModal(); }
+    try { await api.deleteColdRoom(selected.id); await refresh(); closeModal(); }
     catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
@@ -57,7 +68,7 @@ export default function ColdRooms() {
   const typeLabel: Record<string, string> = { walk_in_cooler: 'Walk-in Cooler', refrigerator: 'Refrigerator', freezer: 'Freezer', ultra_cold: 'Ultra-Cold' };
   const statusColor: Record<string, string> = { operational: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', maintenance: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30', defective: 'bg-red-500/15 text-red-400 border-red-500/30' };
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
+  if (roomsLoading || hospitalsLoading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
 
   return (
     <div className="space-y-6">

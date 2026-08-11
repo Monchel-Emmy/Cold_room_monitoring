@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Building2, Snowflake, FlaskConical, Syringe, Bell, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { api } from '../services/api';
@@ -6,14 +6,13 @@ import { DashboardStats } from '../types';
 import StatCard from '../components/StatCard';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: stats, isLoading } = useQuery<DashboardStats>({
+    queryKey: ['dashboard'],
+    queryFn: () => api.getDashboard(),
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    api.getDashboard().then((d: any) => setStats(d)).catch(console.error).finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return (
+  if (isLoading) return (
     <div className="flex items-center justify-center h-64">
       <div className="text-slate-400">Loading dashboard...</div>
     </div>

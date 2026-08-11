@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, CheckCircle2, AlertTriangle, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -7,31 +8,34 @@ import Modal from '../components/Modal';
 
 export default function Alerts() {
   const { isAtLeastManager } = useAuth();
-  const [alerts,   setAlerts]   = useState<Alert[]>([]);
-  const [loading,  setLoading]  = useState(true);
+  const queryClient = useQueryClient();
+  const { data: alerts = [], isLoading } = useQuery<Alert[]>({
+    queryKey: ['alerts'],
+    queryFn: () => api.getAlerts(),
+    staleTime: 20_000,
+  });
   const [delModal, setDelModal] = useState<Alert | null>(null);
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState('');
 
-  const load = () => {
-    api.getAlerts().then((d: any) => setAlerts(d)).catch(console.error).finally(() => setLoading(false));
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['alerts'] });
   };
-  useEffect(() => { load(); }, []);
 
   const acknowledge = async (id: string) => {
     await api.acknowledgeAlert(id).catch(console.error);
-    load();
+    await refresh();
   };
 
   const acknowledgeAll = async () => {
     const active = alerts.filter(a => !a.acknowledged);
     await Promise.all(active.map(a => api.acknowledgeAlert(a.id)));
-    load();
+    await refresh();
   };
 
   const del = async () => {
     if (!delModal) return; setSaving(true);
-    try { await api.deleteAlert(delModal.id); await load(); setDelModal(null); }
+    try { await api.deleteAlert(delModal.id); await refresh(); setDelModal(null); }
     catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   };
@@ -46,7 +50,7 @@ export default function Alerts() {
   const active = alerts.filter(a => !a.acknowledged);
   const acked  = alerts.filter(a => a.acknowledged);
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
+  if (isLoading) return <div className="flex items-center justify-center h-64 text-slate-400">Loading...</div>;
 
   return (
     <div className="space-y-6">
