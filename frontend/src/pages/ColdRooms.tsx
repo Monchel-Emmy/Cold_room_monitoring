@@ -8,7 +8,21 @@ import { ColdRoom, Hospital } from '../types';
 import Modal from '../components/Modal';
 import { TableSkeleton } from '../components/Skeleton';
 
-const EMPTY = { name: '', hospitalId: '', type: 'walk_in_cooler', modelName: '', serialNumber: '', targetTempMin: 2, targetTempMax: 8, targetHumidityMin: 45, targetHumidityMax: 75, status: 'operational' };
+const EMPTY = {
+  name: '',
+  hospitalId: '',
+  type: 'walk_in_cooler',
+  modelName: '',
+  serialNumber: '',
+  capacity: 0,
+  usedCapacity: 0,
+  capacityUnit: 'doses',
+  targetTempMin: 2,
+  targetTempMax: 8,
+  targetHumidityMin: 45,
+  targetHumidityMax: 75,
+  status: 'operational'
+};
 
 export default function ColdRooms() {
   const { isAtLeastManager, isAdmin } = useAuth();
@@ -40,7 +54,7 @@ export default function ColdRooms() {
   };
 
   const openCreate = () => { setForm({ ...EMPTY, hospitalId: hospitals[0]?.id || '' }); setError(''); setModal('create'); };
-  const openEdit   = (r: ColdRoom) => { setSelected(r); setForm({ name: r.name, hospitalId: r.hospitalId, type: r.type, modelName: r.modelName, serialNumber: r.serialNumber, targetTempMin: r.targetTempMin, targetTempMax: r.targetTempMax, targetHumidityMin: r.targetHumidityMin, targetHumidityMax: r.targetHumidityMax, status: r.status }); setError(''); setModal('edit'); };
+  const openEdit   = (r: ColdRoom) => { setSelected(r); setForm({ name: r.name, hospitalId: r.hospitalId, type: r.type, modelName: r.modelName, serialNumber: r.serialNumber, capacity: r.capacity, usedCapacity: r.usedCapacity, capacityUnit: r.capacityUnit, targetTempMin: r.targetTempMin, targetTempMax: r.targetTempMax, targetHumidityMin: r.targetHumidityMin, targetHumidityMax: r.targetHumidityMax, status: r.status }); setError(''); setModal('edit'); };
   const openDelete = (r: ColdRoom) => { setSelected(r); setModal('delete'); };
   const closeModal = () => { setModal(null); setSelected(null); };
 
@@ -68,6 +82,15 @@ export default function ColdRooms() {
 
   const typeLabel: Record<string, string> = { walk_in_cooler: 'Walk-in Cooler', refrigerator: 'Refrigerator', freezer: 'Freezer', ultra_cold: 'Ultra-Cold' };
   const statusColor: Record<string, string> = { operational: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', maintenance: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30', defective: 'bg-red-500/15 text-red-400 border-red-500/30' };
+
+  const getCapacityMeta = (room: ColdRoom) => {
+    const capacity = Number(room.capacity ?? 0);
+    const used = Number(room.usedCapacity ?? 0);
+    const remaining = Math.max(capacity - used, 0);
+    const occupancy = capacity > 0 ? Math.min((used / capacity) * 100, 100) : 0;
+    const state = capacity <= 0 ? 'available' : occupancy >= 100 ? 'full' : occupancy >= 75 ? 'almost_full' : 'available';
+    return { remaining, occupancy, state };
+  };
 
   if (roomsLoading || hospitalsLoading) return <TableSkeleton />;
 
@@ -108,6 +131,16 @@ export default function ColdRooms() {
               <div className="flex items-center gap-1 text-xs text-slate-400 bg-slate-900/40 px-2.5 py-1.5 rounded-lg border border-slate-700/30">
                 <Thermometer size={11} className="text-cyan-400" /> {r.targetTempMin}–{r.targetTempMax}°C · {r.targetHumidityMin}–{r.targetHumidityMax}% RH
               </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                <div className="bg-slate-900/40 rounded-lg p-2 border border-slate-700/30">
+                  <p className="text-slate-500">Capacity</p>
+                  <p className="font-semibold text-white">{r.capacity || 0} {r.capacityUnit}</p>
+                </div>
+                <div className="bg-slate-900/40 rounded-lg p-2 border border-slate-700/30">
+                  <p className="text-slate-500">Remaining</p>
+                  <p className="font-semibold text-white">{getCapacityMeta(r).remaining} {r.capacityUnit}</p>
+                </div>
+              </div>
             </div>
             <Link to={`/cold-rooms/${r.id}`} className="flex items-center justify-center gap-1 mt-3 py-1.5 text-xs text-slate-400 hover:text-cyan-400 border border-slate-700/50 hover:border-cyan-500/30 rounded-xl transition-colors">
               View Detail <ChevronRight size={12} />
@@ -141,6 +174,20 @@ export default function ColdRooms() {
             <label className="block text-xs font-semibold text-slate-400 mb-1">Status</label>
             <select value={form.status} onChange={f('status')} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
               {['operational', 'maintenance', 'defective'].map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">Capacity</label>
+            <input type="number" value={form.capacity} onChange={fn('capacity')} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">Used Capacity</label>
+            <input type="number" value={form.usedCapacity} onChange={fn('usedCapacity')} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">Capacity Unit</label>
+            <select value={form.capacityUnit} onChange={f('capacityUnit')} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
+              {['doses', 'boxes', 'liters'].map(unit => <option key={unit} value={unit}>{unit}</option>)}
             </select>
           </div>
           {[['Min Temp (°C)', 'targetTempMin'], ['Max Temp (°C)', 'targetTempMax'], ['Min Humidity (%)', 'targetHumidityMin'], ['Max Humidity (%)', 'targetHumidityMax']].map(([label, key]) => (

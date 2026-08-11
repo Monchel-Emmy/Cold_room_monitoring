@@ -51,6 +51,16 @@ router.get('/', async (req: AuthRequest, res) => {
       }));
 
       const vaccineCount = await Vaccine.countDocuments({ coldRoomId: room._id });
+      const vaccineQtyAgg = await Vaccine.aggregate([
+        { $match: { coldRoomId: room._id } },
+        { $group: { _id: null, totalQty: { $sum: '$quantity' } } },
+      ]);
+      const usedCapacity = room.usedCapacity || (vaccineQtyAgg[0]?.totalQty ?? 0);
+      const capacity = Number(room.capacity ?? 0);
+      const remainingCapacity = Math.max(capacity - usedCapacity, 0);
+      const occupancyPercent = capacity > 0 ? Math.min((usedCapacity / capacity) * 100, 100) : 0;
+      const capacityStatus = capacity <= 0 ? 'available' : occupancyPercent >= 100 ? 'full' : occupancyPercent >= 75 ? 'almost_full' : 'available';
+
       const atRiskCount  = await Vaccine.countDocuments({ coldRoomId: room._id, status: 'at_risk' });
       const expiredCount = await Vaccine.countDocuments({ coldRoomId: room._id, status: 'expired' });
 
@@ -62,6 +72,10 @@ router.get('/', async (req: AuthRequest, res) => {
         vaccineCount,
         atRiskCount,
         expiredCount,
+        usedCapacity,
+        remainingCapacity,
+        occupancyPercent,
+        capacityStatus,
       };
     }));
 
@@ -112,11 +126,25 @@ router.get('/:id', async (req: AuthRequest, res) => {
       };
     }));
 
+    const vaccineQtyAgg = await Vaccine.aggregate([
+      { $match: { coldRoomId: room._id } },
+      { $group: { _id: null, totalQty: { $sum: '$quantity' } } },
+    ]);
+    const usedCapacity = room.usedCapacity || (vaccineQtyAgg[0]?.totalQty ?? 0);
+    const capacity = Number(room.capacity ?? 0);
+    const remainingCapacity = Math.max(capacity - usedCapacity, 0);
+    const occupancyPercent = capacity > 0 ? Math.min((usedCapacity / capacity) * 100, 100) : 0;
+    const capacityStatus = capacity <= 0 ? 'available' : occupancyPercent >= 100 ? 'full' : occupancyPercent >= 75 ? 'almost_full' : 'available';
+
     res.json({
       ...room,
       id:           String(room._id),
       hospitalName: hospital?.name || '',
       chambers:     chambersWithData,
+      usedCapacity,
+      remainingCapacity,
+      occupancyPercent,
+      capacityStatus,
     });
   } catch (err) {
     res.status(500).json({ error: String(err) });

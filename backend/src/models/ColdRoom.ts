@@ -6,6 +6,9 @@ export interface IColdRoom extends Document {
   modelName: string;
   serialNumber: string;
   type: 'walk_in_cooler' | 'refrigerator' | 'freezer' | 'ultra_cold';
+  capacity: number;
+  usedCapacity: number;
+  capacityUnit: 'liters' | 'boxes' | 'doses';
   targetTempMin: number;
   targetTempMax: number;
   targetHumidityMin: number;
@@ -21,6 +24,9 @@ const schema = new Schema<IColdRoom>({
   modelName:         { type: String, default: '' },
   serialNumber:      { type: String, default: '' },
   type:              { type: String, enum: ['walk_in_cooler','refrigerator','freezer','ultra_cold'], default: 'walk_in_cooler' },
+  capacity:          { type: Number, default: 0 },
+  usedCapacity:      { type: Number, default: 0 },
+  capacityUnit:      { type: String, enum: ['liters','boxes','doses'], default: 'doses' },
   targetTempMin:     { type: Number, default: 2 },
   targetTempMax:     { type: Number, default: 8 },
   targetHumidityMin: { type: Number, default: 40 },

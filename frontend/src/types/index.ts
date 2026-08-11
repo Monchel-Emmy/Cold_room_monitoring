@@ -49,6 +49,9 @@ export interface ColdRoom {
   modelName: string;
   serialNumber: string;
   type: 'walk_in_cooler' | 'refrigerator' | 'freezer' | 'ultra_cold';
+  capacity: number;
+  usedCapacity: number;
+  capacityUnit: 'liters' | 'boxes' | 'doses';
   targetTempMin: number;
   targetTempMax: number;
   targetHumidityMin: number;
@@ -60,6 +63,9 @@ export interface ColdRoom {
   vaccineCount?: number;
   atRiskCount?: number;
   expiredCount?: number;
+  remainingCapacity?: number;
+  occupancyPercent?: number;
+  capacityStatus?: 'available' | 'almost_full' | 'full';
 }
 
 // ── Chamber ───────────────────────────────────────────────────────────────────
