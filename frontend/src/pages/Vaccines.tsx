@@ -43,6 +43,7 @@ export default function Vaccines() {
       queryClient.invalidateQueries({ queryKey: ['vaccines'] }),
       queryClient.invalidateQueries({ queryKey: ['chambers'] }),
       queryClient.invalidateQueries({ queryKey: ['hospitals'] }),
+      queryClient.invalidateQueries({ queryKey: ['cold-rooms'] }),
     ]);
   };
 
@@ -84,6 +85,18 @@ export default function Vaccines() {
   };
 
   const filtered = filter ? vaccines.filter(v => v.status === filter) : vaccines;
+
+  // ── Live chamber capacity info for the modal ───────────────────────────────
+  const selectedChamber = chambers.find(c => c.id === form.chamberId);
+  const chamberCapacity = selectedChamber?.capacity ?? 0;
+  // sum vaccines already in that chamber (exclude current vaccine if editing)
+  const chamberStored = vaccines
+    .filter(v => v.chamberId === form.chamberId && (modal !== 'edit' || !selected || v.id !== selected.id))
+    .reduce((s, v) => s + (v.quantity ?? 0), 0);
+  const chamberRemaining = chamberCapacity > 0 ? Math.max(chamberCapacity - chamberStored, 0) : null;
+  const chamberFull = chamberCapacity > 0 && chamberStored >= chamberCapacity;
+  const wouldOverflow = chamberCapacity > 0 && (chamberStored + Number(form.quantity ?? 0)) > chamberCapacity;
+  const chamberOccupancyPct = chamberCapacity > 0 ? Math.min((chamberStored / chamberCapacity) * 100, 100) : 0;
 
   const statusBadge: Record<string, string> = {
     active:   'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
@@ -177,6 +190,28 @@ export default function Vaccines() {
             <select value={form.chamberId} onChange={e => { onChamberChange(e.target.value); }} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
               {chambers.map(c => <option key={c.id} value={c.id}>{c.name} ({hospitals.find(h => h.id === c.hospitalId)?.name ?? ''})</option>)}
             </select>
+            {/* Chamber capacity info */}
+            {selectedChamber && chamberCapacity > 0 && (
+              <div className="mt-2 space-y-1">
+                <div className="flex justify-between text-[10px] text-slate-500">
+                  <span>Chamber capacity: {chamberCapacity} doses</span>
+                  <span className={chamberFull ? 'text-red-400 font-semibold' : 'text-slate-400'}>
+                    {chamberFull ? '🔴 FULL' : `${chamberRemaining} remaining`}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      chamberFull ? 'bg-red-500' : chamberOccupancyPct >= 75 ? 'bg-yellow-500' : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${chamberOccupancyPct}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            {selectedChamber && chamberCapacity === 0 && (
+              <p className="mt-1 text-[10px] text-slate-600">No capacity limit set for this chamber.</p>
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">Status</label>
@@ -209,6 +244,11 @@ export default function Vaccines() {
           </div>
         </div>
         {error && <p className="mt-3 text-red-400 text-xs">{error}</p>}
+        {wouldOverflow && !error && (
+          <p className="mt-3 text-yellow-400 text-xs flex items-center gap-1">
+            ⚠ This quantity exceeds the chamber&apos;s remaining capacity ({chamberRemaining} doses available).
+          </p>
+        )}
         <div className="flex gap-3 mt-5">
           <button onClick={closeModal} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded-xl transition-colors">Cancel</button>
           <button onClick={save} disabled={saving} className="flex-1 py-2 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">{saving ? 'Saving...' : 'Save'}</button>

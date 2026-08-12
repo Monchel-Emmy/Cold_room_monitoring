@@ -75,6 +75,7 @@ export interface Chamber {
   coldRoomId: string;
   hospitalId: string;
   sensorId: string;
+  capacity: number;           // max doses (0 = unlimited)
   targetTempMin: number;
   targetTempMax: number;
   targetHumidityMin: number;
@@ -88,6 +89,7 @@ export interface Chamber {
   tempStatus?: 'ok' | 'alert' | 'unknown';
   humStatus?:  'ok' | 'alert' | 'unknown';
   vaccineCount?: number;
+  dosesStored?: number;
   vaccines?: Vaccine[];
 }
 

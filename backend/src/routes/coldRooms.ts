@@ -33,6 +33,7 @@ router.get('/', async (req: AuthRequest, res) => {
         const humOk = reading
           ? reading.humidity >= ch.targetHumidityMin && reading.humidity <= ch.targetHumidityMax
           : null;
+        const dosesStored = vaccines.reduce((sum, v) => sum + (v.quantity ?? 0), 0);
         return {
           ...ch,
           id: String(ch._id),
@@ -42,6 +43,7 @@ router.get('/', async (req: AuthRequest, res) => {
           tempStatus:      reading ? (tempOk ? 'ok' : 'alert') : 'unknown',
           humStatus:       reading ? (humOk  ? 'ok' : 'alert') : 'unknown',
           vaccineCount:    vaccines.length,
+          dosesStored,
           vaccines: vaccines.map(v => ({
             ...v,
             id: String(v._id),
@@ -109,6 +111,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
       const humOk = reading
         ? reading.humidity >= ch.targetHumidityMin && reading.humidity <= ch.targetHumidityMax
         : null;
+      const dosesStored = vaccines.reduce((sum, v) => sum + (v.quantity ?? 0), 0);
 
       return {
         ...ch,
@@ -118,6 +121,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
         lastUpdated:     reading ? (reading.timestamp instanceof Date ? reading.timestamp.toISOString() : reading.timestamp) : null,
         tempStatus:      reading ? (tempOk ? 'ok' : 'alert') : 'unknown',
         humStatus:       reading ? (humOk  ? 'ok' : 'alert') : 'unknown',
+        dosesStored,
         vaccines: vaccines.map(v => ({
           ...v,
           id: String(v._id),

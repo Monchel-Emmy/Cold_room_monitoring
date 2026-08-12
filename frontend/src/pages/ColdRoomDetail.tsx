@@ -19,6 +19,7 @@ export default function ColdRoomDetail() {
     sensorId: '',
     hospitalId: '',
     coldRoomId: id || '',
+    capacity: 0,
     status: 'operational',
     targetTempMin: 2,
     targetTempMax: 8,
@@ -51,6 +52,7 @@ export default function ColdRoomDetail() {
       sensorId: '',
       hospitalId: room?.hospitalId || '',
       coldRoomId: id || '',
+      capacity: 0,
       status: 'operational',
       targetTempMin: 2,
       targetTempMax: 8,
@@ -68,6 +70,7 @@ export default function ColdRoomDetail() {
       sensorId: chamber.sensorId,
       hospitalId: chamber.hospitalId,
       coldRoomId: chamber.coldRoomId,
+      capacity: chamber.capacity ?? 0,
       status: chamber.status,
       targetTempMin: chamber.targetTempMin,
       targetTempMax: chamber.targetTempMax,
@@ -137,9 +140,12 @@ export default function ColdRoomDetail() {
     defective:    'bg-red-500/15 text-red-400 border-red-500/30',
   };
 
-  const roomCapacity = Number(room.capacity ?? 0);
-  const roomUsed = Number(room.usedCapacity ?? 0);
-  const roomRemaining = Math.max(roomCapacity - roomUsed, 0);
+  // Aggregate from chambers (preferred) — falls back to room-level fields if chambers have no capacity set
+  const totalChamberCapacity = chambers.reduce((s, ch) => s + (ch.capacity ?? 0), 0);
+  const totalDosesStored     = chambers.reduce((s, ch) => s + (ch.dosesStored ?? 0), 0);
+  const roomCapacity  = totalChamberCapacity > 0 ? totalChamberCapacity : Number(room.capacity ?? 0);
+  const roomUsed      = totalChamberCapacity > 0 ? totalDosesStored     : Number(room.usedCapacity ?? 0);
+  const roomRemaining = roomCapacity > 0 ? Math.max(roomCapacity - roomUsed, 0) : 0;
   const roomOccupancy = roomCapacity > 0 ? Math.min((roomUsed / roomCapacity) * 100, 100) : 0;
 
   return (
@@ -181,15 +187,22 @@ export default function ColdRoomDetail() {
             </div>
             <div className="bg-slate-900/40 rounded-lg p-3 border border-slate-700/30">
               <p className="text-slate-500 text-xs">Capacity</p>
-              <p className="text-slate-200 font-medium mt-0.5">{roomCapacity || 0} {room.capacityUnit || 'doses'}</p>
+              <p className="text-slate-200 font-medium mt-0.5">
+                {roomCapacity > 0 ? roomCapacity : '—'}{roomCapacity > 0 ? ` ${room.capacityUnit || 'doses'}` : ''}
+              </p>
+              {totalChamberCapacity > 0 && <p className="text-[10px] text-slate-600 mt-0.5">{chambers.length} chambers</p>}
             </div>
             <div className="bg-slate-900/40 rounded-lg p-3 border border-slate-700/30">
               <p className="text-slate-500 text-xs">Remaining</p>
-              <p className="text-slate-200 font-medium mt-0.5">{roomRemaining} {room.capacityUnit || 'doses'}</p>
+              <p className={`font-medium mt-0.5 ${roomRemaining === 0 && roomCapacity > 0 ? 'text-red-400' : 'text-slate-200'}`}>
+                {roomCapacity > 0 ? `${roomRemaining} ${room.capacityUnit || 'doses'}` : '—'}
+              </p>
             </div>
             <div className="bg-slate-900/40 rounded-lg p-3 border border-slate-700/30">
               <p className="text-slate-500 text-xs">Occupancy</p>
-              <p className="text-slate-200 font-medium mt-0.5">{roomOccupancy.toFixed(0)}%</p>
+              <p className={`font-medium mt-0.5 ${roomOccupancy >= 100 ? 'text-red-400' : roomOccupancy >= 75 ? 'text-yellow-400' : 'text-slate-200'}`}>
+                {roomCapacity > 0 ? `${roomOccupancy.toFixed(0)}%` : '—'}
+              </p>
             </div>
           </div>
         </div>
@@ -212,30 +225,13 @@ export default function ColdRoomDetail() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {chambers.map(ch => (
-              <div key={String(ch.id)} className="relative">
-                <div className="absolute right-[4.5rem] top-7 z-10 flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => openEditChamber(ch)}
-                    className="h-6 w-6 flex items-center justify-center rounded-md border border-slate-600 bg-slate-900/70 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 transition-colors"
-                    title="Edit chamber"
-                  >
-                    ✎
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openDeleteChamber(ch)}
-                    className="h-6 w-6 flex items-center justify-center rounded-md border border-slate-600 bg-slate-900/70 text-slate-300 hover:border-red-500 hover:text-red-400 transition-colors"
-                    title="Delete chamber"
-                  >
-                    🗑
-                  </button>
-                </div>
-                <ChamberCard
-                  chamber={ch}
-                  liveReading={readings.get(String(ch.id)) ?? null}
-                />
-              </div>
+              <ChamberCard
+                key={String(ch.id)}
+                chamber={ch}
+                liveReading={readings.get(String(ch.id)) ?? null}
+                onEdit={openEditChamber}
+                onDelete={openDeleteChamber}
+              />
             ))}
           </div>
         )}
@@ -250,6 +246,10 @@ export default function ColdRoomDetail() {
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">Sensor ID</label>
             <input value={chamberForm.sensorId} onChange={(e) => setChamberForm({ ...chamberForm, sensorId: e.target.value })} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">Capacity (doses) <span className="text-slate-600 font-normal">— 0 = unlimited</span></label>
+            <input type="number" min={0} value={chamberForm.capacity} onChange={(e) => setChamberForm({ ...chamberForm, capacity: Number(e.target.value) })} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

@@ -26,6 +26,7 @@ router.get('/', async (req: AuthRequest, res) => {
       const vaccines = await Vaccine.find({ chamberId: ch._id }).lean();
       const tempOk = reading ? reading.temperature >= ch.targetTempMin && reading.temperature <= ch.targetTempMax : null;
       const humOk  = reading ? reading.humidity >= ch.targetHumidityMin && reading.humidity <= ch.targetHumidityMax : null;
+      const dosesStored = vaccines.reduce((sum, v) => sum + (v.quantity ?? 0), 0);
       return {
         ...ch,
         id:              String(ch._id),
@@ -35,6 +36,7 @@ router.get('/', async (req: AuthRequest, res) => {
         tempStatus:      reading ? (tempOk ? 'ok' : 'alert') : 'unknown',
         humStatus:       reading ? (humOk  ? 'ok' : 'alert') : 'unknown',
         vaccineCount:    vaccines.length,
+        dosesStored,
         vaccines: vaccines.map(v => ({
           ...v,
           id: String(v._id),
@@ -58,11 +60,13 @@ router.get('/:id', async (req: AuthRequest, res) => {
     }
     const reading = await SensorReading.findOne({ chamberId: ch._id }).sort({ timestamp: -1 }).lean();
     const vaccines = await Vaccine.find({ chamberId: ch._id }).lean();
+    const dosesStored = vaccines.reduce((sum, v) => sum + (v.quantity ?? 0), 0);
     res.json({
       ...ch,
       id: String(ch._id),
       currentTemp:     reading?.temperature ?? null,
       currentHumidity: reading?.humidity ?? null,
+      dosesStored,
       vaccines: vaccines.map(v => ({ ...v, id: String(v._id) })),
     });
   } catch (err) {

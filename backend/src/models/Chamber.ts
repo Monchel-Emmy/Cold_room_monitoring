@@ -5,6 +5,7 @@ export interface IChamber extends Document {
   coldRoomId: Types.ObjectId;
   hospitalId: Types.ObjectId;
   sensorId: string;       // identifier for the physical sensor
+  capacity: number;       // max doses this chamber can hold (0 = unlimited)
   targetTempMin: number;
   targetTempMax: number;
   targetHumidityMin: number;
@@ -19,6 +20,7 @@ const schema = new Schema<IChamber>({
   coldRoomId:        { type: Schema.Types.ObjectId, ref: 'ColdRoom', required: true },
   hospitalId:        { type: Schema.Types.ObjectId, ref: 'Hospital', required: true },
   sensorId:          { type: String, default: '' },
+  capacity:          { type: Number, default: 0 },
   targetTempMin:     { type: Number, default: 2 },
   targetTempMax:     { type: Number, default: 8 },
   targetHumidityMin: { type: Number, default: 40 },
@@ -28,3 +30,4 @@ const schema = new Schema<IChamber>({
 }, { timestamps: { createdAt: true, updatedAt: false } });
 
 export const Chamber = model<IChamber>('Chamber', schema);
+

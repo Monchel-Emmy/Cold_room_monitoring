@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Snowflake, Thermometer, ChevronRight, Building2, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Snowflake, Thermometer, ChevronRight, Building2, Plus, Pencil, Trash2, ChevronDown, ChevronUp, FlaskConical } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { ColdRoom, Hospital } from '../types';
@@ -40,11 +40,19 @@ export default function ColdRooms() {
     staleTime: 60_000,
   });
 
-  const [modal,      setModal]      = useState<'create' | 'edit' | 'delete' | null>(null);
-  const [selected,   setSelected]   = useState<ColdRoom | null>(null);
-  const [form,       setForm]       = useState<any>(EMPTY);
-  const [saving,     setSaving]     = useState(false);
-  const [error,      setError]      = useState('');
+  const [modal,         setModal]         = useState<'create' | 'edit' | 'delete' | null>(null);
+  const [selected,      setSelected]      = useState<ColdRoom | null>(null);
+  const [form,          setForm]          = useState<any>(EMPTY);
+  const [saving,        setSaving]        = useState(false);
+  const [error,         setError]         = useState('');
+  const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) =>
+    setExpandedRooms(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const refresh = async () => {
     await Promise.all([
@@ -84,12 +92,16 @@ export default function ColdRooms() {
   const statusColor: Record<string, string> = { operational: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', maintenance: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30', defective: 'bg-red-500/15 text-red-400 border-red-500/30' };
 
   const getCapacityMeta = (room: ColdRoom) => {
-    const capacity = Number(room.capacity ?? 0);
-    const used = Number(room.usedCapacity ?? 0);
-    const remaining = Math.max(capacity - used, 0);
+    const chams = room.chambers ?? [];
+    const totalChamberCap    = chams.reduce((s, ch) => s + (ch.capacity ?? 0), 0);
+    const totalDosesStored   = chams.reduce((s, ch) => s + (ch.dosesStored ?? 0), 0);
+    // Prefer aggregated chamber values; fall back to room-level fields
+    const capacity  = totalChamberCap > 0 ? totalChamberCap  : Number(room.capacity ?? 0);
+    const used      = totalChamberCap > 0 ? totalDosesStored : Number(room.usedCapacity ?? 0);
+    const remaining = capacity > 0 ? Math.max(capacity - used, 0) : 0;
     const occupancy = capacity > 0 ? Math.min((used / capacity) * 100, 100) : 0;
     const state = capacity <= 0 ? 'available' : occupancy >= 100 ? 'full' : occupancy >= 75 ? 'almost_full' : 'available';
-    return { remaining, occupancy, state };
+    return { capacity, used, remaining, occupancy, state };
   };
 
   if (roomsLoading || hospitalsLoading) return <TableSkeleton />;
@@ -131,16 +143,72 @@ export default function ColdRooms() {
               <div className="flex items-center gap-1 text-xs text-slate-400 bg-slate-900/40 px-2.5 py-1.5 rounded-lg border border-slate-700/30">
                 <Thermometer size={11} className="text-cyan-400" /> {r.targetTempMin}–{r.targetTempMax}°C · {r.targetHumidityMin}–{r.targetHumidityMax}% RH
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
-                <div className="bg-slate-900/40 rounded-lg p-2 border border-slate-700/30">
-                  <p className="text-slate-500">Capacity</p>
-                  <p className="font-semibold text-white">{r.capacity || 0} {r.capacityUnit}</p>
+              {/* ── Dose capacity row ── */}
+              {(() => {
+                const meta = getCapacityMeta(r);
+                return (
+                  <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                    <div className="bg-slate-900/40 rounded-lg p-2 border border-slate-700/30">
+                      <p className="text-slate-500 flex items-center gap-1"><FlaskConical size={10} className="text-cyan-500" />Capacity</p>
+                      <p className="font-bold text-white mt-0.5">
+                        {meta.capacity > 0 ? meta.capacity : '—'}
+                        {meta.capacity > 0 && <span className="font-normal text-slate-400"> {r.capacityUnit}</span>}
+                      </p>
+                      <p className="text-slate-500 mt-0.5">Stored: {meta.used} doses</p>
+                    </div>
+                    <div className="bg-slate-900/40 rounded-lg p-2 border border-slate-700/30">
+                      <div className="flex items-center justify-between">
+                        <p className="text-slate-500 flex items-center gap-1"><FlaskConical size={10} className="text-emerald-400" />Remaining</p>
+                        {(r.chambers ?? []).length > 0 && (
+                          <button
+                            onClick={() => toggleExpand(r.id)}
+                            className="text-slate-500 hover:text-cyan-400 transition-colors"
+                            title="Show per-chamber breakdown"
+                          >
+                            {expandedRooms.has(r.id) ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                          </button>
+                        )}
+                      </div>
+                      <p className={`font-bold mt-0.5 ${meta.remaining === 0 && meta.capacity > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {meta.capacity > 0 ? meta.remaining : '—'}
+                        {meta.capacity > 0 && <span className="font-normal text-slate-400"> {r.capacityUnit}</span>}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ── Per-chamber breakdown (collapsible) ── */}
+              {expandedRooms.has(r.id) && (r.chambers ?? []).length > 0 && (
+                <div className="bg-slate-900/60 rounded-lg border border-slate-700/30 divide-y divide-slate-700/20">
+                  <p className="text-[10px] text-slate-500 px-2.5 pt-2 pb-1 font-semibold uppercase tracking-wide">Chamber Breakdown</p>
+                  {(r.chambers ?? []).map((ch, idx) => {
+                    const stored = ch.dosesStored ?? 0;
+                    const cap = ch.capacity ?? 0;
+                    const isFull = cap > 0 && stored >= cap;
+                    const pct = cap > 0 ? Math.min((stored / cap) * 100, 100) : 0;
+                    return (
+                      <div key={ch.id} className="px-2.5 py-2 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-slate-400">{ch.name || `Chamber ${idx + 1}`}</span>
+                          <span className={`text-[11px] font-semibold ${isFull ? 'text-red-400' : 'text-cyan-300'}`}>
+                            {stored}{cap > 0 ? `/${cap}` : ''} <span className="text-slate-500 font-normal">doses</span>
+                            {isFull && <span className="ml-1">🔴</span>}
+                          </span>
+                        </div>
+                        {cap > 0 && (
+                          <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${isFull ? 'bg-red-500' : pct >= 75 ? 'bg-yellow-500' : 'bg-emerald-500'}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="bg-slate-900/40 rounded-lg p-2 border border-slate-700/30">
-                  <p className="text-slate-500">Remaining</p>
-                  <p className="font-semibold text-white">{getCapacityMeta(r).remaining} {r.capacityUnit}</p>
-                </div>
-              </div>
+              )}
             </div>
             <Link to={`/cold-rooms/${r.id}`} className="flex items-center justify-center gap-1 mt-3 py-1.5 text-xs text-slate-400 hover:text-cyan-400 border border-slate-700/50 hover:border-cyan-500/30 rounded-xl transition-colors">
               View Detail <ChevronRight size={12} />
