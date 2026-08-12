@@ -119,7 +119,7 @@ export default function Vaccines() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-700/50 bg-slate-900/30">
-                {['Vaccine', 'Chamber', 'Batch / Manufacturer', 'Qty', 'Storage', 'Status', 'Expires', ''].map(h => (
+                {['Vaccine', 'Chamber', 'Tag Number / Manufacturer', 'Qty', 'Storage', 'Status', 'Expires', ''].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
