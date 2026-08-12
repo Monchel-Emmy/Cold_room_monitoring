@@ -47,13 +47,18 @@ export default function Vaccines() {
     ]);
   };
 
-  // When chamberId changes, auto-fill coldRoomId and hospitalId
+  // When chamberId changes, auto-fill coldRoomId and hospitalId (clear if unassigned)
   const onChamberChange = (chamberId: string) => {
     const ch = chambers.find(c => c.id === chamberId);
-    setForm((f: any) => ({ ...f, chamberId, coldRoomId: ch?.coldRoomId || '', hospitalId: ch?.hospitalId || '' }));
+    setForm((f: any) => ({
+      ...f,
+      chamberId,
+      coldRoomId:  ch?.coldRoomId  || '',
+      hospitalId:  ch?.hospitalId  || '',
+    }));
   };
 
-  const openCreate = () => { setForm({ ...EMPTY, chamberId: chambers[0]?.id || '' }); onChamberChange(chambers[0]?.id || ''); setError(''); setModal('create'); };
+  const openCreate = () => { setForm({ ...EMPTY, chamberId: '' }); setError(''); setModal('create'); };
   const openEdit = (v: Vaccine) => {
     setSelected(v);
     setForm({ name: v.name, type: v.type, manufacturer: v.manufacturer, batchNumber: v.batchNumber, quantity: v.quantity, unit: v.unit, chamberId: v.chamberId, coldRoomId: v.coldRoomId, hospitalId: v.hospitalId, expiryDate: v.expiryDate.slice(0, 10), status: v.status, storageRequirements: { ...v.storageRequirements } });
@@ -67,7 +72,7 @@ export default function Vaccines() {
   const sr = (k: string) => (e: any) => setForm((p: any) => ({ ...p, storageRequirements: { ...p.storageRequirements, [k]: Number(e.target.value) } }));
 
   const save = async () => {
-    if (!form.name.trim() || !form.chamberId || !form.expiryDate) { setError('Name, chamber and expiry date are required'); return; }
+    if (!form.name.trim() || !form.expiryDate) { setError('Name and expiry date are required'); return; }
     setSaving(true); setError('');
     try {
       if (modal === 'create') await api.createVaccine(form);
@@ -144,7 +149,11 @@ export default function Vaccines() {
                 return (
                   <tr key={v.id} className="hover:bg-slate-700/20 transition-colors">
                     <td className="px-4 py-3 font-medium text-white">{v.name}<p className="text-xs text-slate-400">{v.type}</p></td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">{chambers.find(c => c.id === v.chamberId)?.name ?? v.chamberId.slice(-6)}</td>
+                    <td className="px-4 py-3 text-slate-400 text-xs">
+                      {v.chamberId
+                        ? (chambers.find(c => c.id === v.chamberId)?.name ?? v.chamberId.slice(-6))
+                        : <span className="italic text-slate-600">Unassigned</span>}
+                    </td>
                     <td className="px-4 py-3"><p className="text-slate-300">{v.batchNumber}</p><p className="text-xs text-slate-500">{v.manufacturer}</p></td>
                     <td className="px-4 py-3 font-medium text-slate-300">{v.quantity} {v.unit}</td>
                     <td className="px-4 py-3 text-xs text-slate-400">
@@ -185,9 +194,10 @@ export default function Vaccines() {
               <input value={form[key]} onChange={f(key)} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />
             </div>
           ))}
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1">Chamber *</label>
+          <div className="col-span-2">
+            <label className="block text-xs font-semibold text-slate-400 mb-1">Chamber <span className="text-slate-600 font-normal">(optional)</span></label>
             <select value={form.chamberId} onChange={e => { onChamberChange(e.target.value); }} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
+              <option value="">— Unassigned —</option>
               {chambers.map(c => <option key={c.id} value={c.id}>{c.name} ({hospitals.find(h => h.id === c.hospitalId)?.name ?? ''})</option>)}
             </select>
             {/* Chamber capacity info */}

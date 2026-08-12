@@ -85,13 +85,15 @@ router.post('/', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    // Enforce chamber capacity
-    await checkChamberCapacity(req.body.chamberId, Number(req.body.quantity ?? 0));
+    // Enforce chamber capacity only when a chamber is assigned
+    if (req.body.chamberId) {
+      await checkChamberCapacity(req.body.chamberId, Number(req.body.quantity ?? 0));
+    }
 
     const v = await Vaccine.create(req.body);
 
-    // Keep cold room usedCapacity in sync
-    await syncColdRoomCapacity(v.coldRoomId);
+    // Keep cold room usedCapacity in sync (only when linked to a cold room)
+    if (v.coldRoomId) await syncColdRoomCapacity(v.coldRoomId);
 
     res.status(201).json({ ...v.toObject(), id: v._id });
   } catch (err: any) {
@@ -110,15 +112,17 @@ router.put('/:id', async (req: AuthRequest, res) => {
     }
 
     // Enforce chamber capacity (exclude current vaccine from current-stored count)
-    const targetChamber = req.body.chamberId ?? String(v.chamberId);
+    const targetChamber = req.body.chamberId ?? (v.chamberId ? String(v.chamberId) : null);
     const newQty = req.body.quantity !== undefined ? Number(req.body.quantity) : v.quantity;
-    await checkChamberCapacity(targetChamber, newQty, req.params.id);
+    if (targetChamber) {
+      await checkChamberCapacity(targetChamber, newQty, req.params.id);
+    }
 
     const updated = await Vaccine.findByIdAndUpdate(req.params.id, req.body, { new: true }).lean();
 
-    // Sync both the old cold room (if chamber changed) and the new one
-    await syncColdRoomCapacity(v.coldRoomId);
-    if (updated && String(updated.coldRoomId) !== String(v.coldRoomId)) {
+    // Sync old cold room and new one if changed
+    if (v.coldRoomId) await syncColdRoomCapacity(v.coldRoomId);
+    if (updated?.coldRoomId && String(updated.coldRoomId) !== String(v.coldRoomId)) {
       await syncColdRoomCapacity(updated.coldRoomId);
     }
 
@@ -138,8 +142,8 @@ router.delete('/:id', async (req: AuthRequest, res) => {
     }
     await Vaccine.findByIdAndDelete(req.params.id);
 
-    // Keep cold room usedCapacity in sync
-    await syncColdRoomCapacity(v.coldRoomId);
+    // Keep cold room usedCapacity in sync (only when linked to a cold room)
+    if (v.coldRoomId) await syncColdRoomCapacity(v.coldRoomId);
 
     res.json({ success: true });
   } catch (err) {

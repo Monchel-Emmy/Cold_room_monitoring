@@ -28,9 +28,9 @@ const schema = new Schema<IVaccine>({
   batchNumber:    { type: String, default: '' },
   quantity:       { type: Number, default: 0 },
   unit:           { type: String, default: 'doses' },
-  chamberId:      { type: Schema.Types.ObjectId, ref: 'Chamber', required: true },
-  coldRoomId:     { type: Schema.Types.ObjectId, ref: 'ColdRoom', required: true },
-  hospitalId:     { type: Schema.Types.ObjectId, ref: 'Hospital', required: true },
+  chamberId:      { type: Schema.Types.ObjectId, ref: 'Chamber' },
+  coldRoomId:     { type: Schema.Types.ObjectId, ref: 'ColdRoom' },
+  hospitalId:     { type: Schema.Types.ObjectId, ref: 'Hospital' },
   expiryDate:     { type: Date, required: true },
   storageRequirements: {
     tempMin:     { type: Number, default: 2 },
