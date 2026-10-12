@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext, useCallback } from 'rea
 import { Outlet, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import AIChatBubble from './AIChatBubble';
 import { getSocket, subscribeToReadings } from '../services/socket';
 import { useAuth } from '../context/AuthContext';
 import { LiveReading } from '../types';
@@ -52,6 +53,7 @@ export default function Layout() {
             <Outlet />
           </main>
         </div>
+        <AIChatBubble />
       </div>
     </LiveContext.Provider>
   );

@@ -99,4 +99,8 @@ export const api = {
   createUser:  (data: Partial<AppUser> & { password?: string }): Promise<AppUser> => req<AppUser>('/users', { method: 'POST', body: JSON.stringify(data) }),
   updateUser:  (id: string, data: Partial<AppUser> & { password?: string }): Promise<AppUser> => req<AppUser>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteUser:  (id: string): Promise<{ success: boolean }> => req<{ success: boolean }>(`/users/${id}`, { method: 'DELETE' }),
+
+  // AI Assistant
+  sendAIChat: (history: Array<{ sender: 'user' | 'ai'; text: string }>, message: string): Promise<{ response: string }> =>
+    req<{ response: string }>('/ai/chat', { method: 'POST', body: JSON.stringify({ history, message }) }),
 };

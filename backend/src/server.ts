@@ -16,6 +16,7 @@ import chamberRoutes   from './routes/chambers';
 import vaccineRoutes   from './routes/vaccines';
 import dashboardRoutes from './routes/dashboard';
 import alertRoutes     from './routes/alerts';
+import aiRoutes        from './routes/ai';
 
 import { authenticate } from './middleware/auth';
 import { Chamber }       from './models/Chamber';
@@ -47,6 +48,66 @@ app.get('/api/health', (_req, res) => res.json({
   timestamp: new Date().toISOString(),
 }));
 
+app.post('/api/telemetry', async (req, res) => {
+  try {
+    const body = req.body ?? {};
+    const rawReadings = Array.isArray(body.readings)
+      ? body.readings
+      : Array.isArray(body.fridges)
+        ? body.fridges.map((item: any, index: number) => ({
+            sensorId: item.sensorId || item.ip || `ESP-${index + 1}`,
+            temperature: item.temperature,
+            humidity: item.humidity ?? body.room?.ambientHum ?? 0,
+            airQuality: body.room?.airQuality ?? 0,
+          }))
+        : [body];
+
+    if (!rawReadings.length) {
+      return res.status(400).json({ error: 'No sensor readings provided' });
+    }
+
+    const saved = await Promise.all(rawReadings.map(async (raw: any) => {
+      const sensorId = String(raw.sensorId ?? raw.id ?? raw.deviceId ?? '').trim();
+      if (!sensorId) return null;
+
+      const chamber = await Chamber.findOne({ sensorId }).lean();
+      if (!chamber) return null;
+
+      const reading = await SensorReading.create({
+        chamberId: chamber._id,
+        coldRoomId: chamber.coldRoomId,
+        hospitalId: chamber.hospitalId,
+        temperature: Number(raw.temperature ?? 0),
+        humidity: Number(raw.humidity ?? 0),
+        timestamp: new Date(),
+      });
+
+      return {
+        chamberId: String(chamber._id),
+        coldRoomId: String(chamber.coldRoomId),
+        sensorId,
+        temperature: reading.temperature,
+        humidity: reading.humidity,
+        timestamp: reading.timestamp.toISOString(),
+      };
+    }));
+
+    const validReadings = saved.filter(Boolean);
+    if (validReadings.length) {
+      io.emit('sensor_reading', validReadings);
+    }
+
+    return res.json({
+      ok: true,
+      saved: validReadings.length,
+      readings: validReadings,
+    });
+  } catch (error) {
+    console.error('Telemetry ingestion error:', error);
+    return res.status(500).json({ error: 'Failed to store telemetry data' });
+  }
+});
+
 // ── Protected routes (require valid JWT) ──────────────────────────────────────
 app.use('/api/users',      authenticate, userRoutes);
 app.use('/api/hospitals',  authenticate, hospitalRoutes);
@@ -55,6 +116,7 @@ app.use('/api/chambers',   authenticate, chamberRoutes);
 app.use('/api/vaccines',   authenticate, vaccineRoutes);
 app.use('/api/dashboard',  authenticate, dashboardRoutes);
 app.use('/api/alerts',     authenticate, alertRoutes);
+app.use('/api/ai',         authenticate, aiRoutes);
 
 // ── WebSocket: push initial readings on connect ───────────────────────────────
 io.on('connection', async socket => {
