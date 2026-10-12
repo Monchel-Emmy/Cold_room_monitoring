@@ -83,7 +83,7 @@ function getMockChatResponse(message: string): string {
     return `Hello! I am **Sentinel AI**, your Cold Room Monitoring assistant.\n\nI can help you with:\n- Vaccine storage temperature and humidity requirements\n- Managing temperature excursions (too hot or too cold alerts)\n- Cold room and equipment maintenance (defrosting, cleaning, sensor alignment)\n- WHO/UNICEF clinical protocols (such as the **Shake Test** or **VVM guidelines**)\n\nWhat cold chain questions or storage issues can I assist you with today?`;
   }
 
-  return `I am **Sentinel AI**, your dedicated Vaccine Cold Chain Assistant. I specialize in answering questions about vaccine storage safety, cold room temperatures, equipment troubleshooting, and WHO cold chain protocols.\n\nIt looks like your question is outside my primary scope. Could you please ask about vaccine handling, cold room maintenance, or cold chain management? For example:\n- *"How do I perform a shake test?"*\n- *"What are the storage guidelines for the polio vaccine?"*\n- *"What should I do if a chamber goes out of range?"*`;
+  return `I can only help with vaccine cold chain topics. For example:\n- *"How do I perform a shake test?"*\n- *"What are the storage guidelines for the polio vaccine?"*\n- *"What should I do if a chamber goes out of range?"*`;
 }
 
 // POST /api/ai/chat
@@ -100,7 +100,9 @@ router.post('/chat', async (req: AuthRequest, res) => {
         const systemInstruction = `You are "Sentinel AI", a professional, helpful, and knowledgeable AI assistant specializing in Vaccine Cold Chain Management, Cold Room Storage Safety, Refrigeration Equipment Maintenance, and Troubleshooting for hospital and cold room managers.
 Provide accurate, clinical, and operational advice regarding vaccine temperatures, humidity, cold room and chamber maintenance, vaccine handling, WHO/UNICEF standards, and storage best practices.
 Keep your responses concise, highly readable, structured with bullet points, and practical. Always prioritize clinical safety and vaccine potency.
-Never answer general queries unrelated to cold chains, vaccines, refrigeration, medicine, or health facility operations. If a user asks something out of scope, politely redirect them back to vaccine cold chain topics.`;
+You are built into the Cold Room Monitoring web application, which tracks hospitals, cold rooms, chambers, vaccines, live temperature/humidity sensor readings and alerts. If the user mentions "the web", "the app" or "the system", they mean this application (for example, adding or assigning a vaccine to a chamber), not a physical storage location.
+Answer the question directly. Do NOT introduce yourself, do NOT state your name, role or area of expertise, and do NOT add closing lines inviting more questions. Start immediately with the answer.
+Never answer general queries unrelated to cold chains, vaccines, refrigeration, medicine, or health facility operations. If a user asks something out of scope, reply in one short sentence that you can only help with vaccine cold chain topics.`;
 
         // Format history for Gemini API
         const contents = (history || []).map((h: any) => ({
