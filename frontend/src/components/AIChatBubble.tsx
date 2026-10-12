@@ -8,6 +8,8 @@ interface ChatMessage {
   timestamp: string;
 }
 
+const WELCOME_MESSAGE = 'Hello! What would you like to know about vaccine storage or your cold rooms?';
+
 const QUICK_SUGGESTIONS = [
   "How do I perform a shake test?",
   "What is the storage temperature of polio vaccine?",
@@ -27,7 +29,7 @@ export default function AIChatBubble() {
     setMessages([
       {
         sender: 'ai',
-        text: 'Hello! I am **Sentinel AI**, your virtual Cold Chain assistant.\n\nI can help you with:\n- Vaccine storage temperature requirements (refrigerators & freezers)\n- Managing temperature excursions (too hot or too cold alerts)\n- Equipment maintenance (defrosting, cleaning, sensor alignment)\n- WHO/UNICEF clinical protocols (such as the **Shake Test** or **VVM guidelines**)\n\nWhat cold chain questions or storage issues can I assist you with today?',
+        text: WELCOME_MESSAGE,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
     ]);
@@ -85,7 +87,7 @@ export default function AIChatBubble() {
       setMessages([
         {
           sender: 'ai',
-          text: 'Hello! I am **Sentinel AI**, your virtual Cold Chain assistant.\n\nI can help you with:\n- Vaccine storage temperature requirements (refrigerators & freezers)\n- Managing temperature excursions (too hot or too cold alerts)\n- Equipment maintenance (defrosting, cleaning, sensor alignment)\n- WHO/UNICEF clinical protocols (such as the **Shake Test** or **VVM guidelines**)\n\nWhat cold chain questions or storage issues can I assist you with today?',
+          text: WELCOME_MESSAGE,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);

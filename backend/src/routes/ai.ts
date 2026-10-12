@@ -80,7 +80,7 @@ function getMockChatResponse(message: string): string {
   }
 
   if (cleanMsg.includes('hi') || cleanMsg.includes('hello') || cleanMsg.includes('hey') || cleanMsg.includes('greetings')) {
-    return `Hello! I am **Sentinel AI**, your Cold Room Monitoring assistant.\n\nI can help you with:\n- Vaccine storage temperature and humidity requirements\n- Managing temperature excursions (too hot or too cold alerts)\n- Cold room and equipment maintenance (defrosting, cleaning, sensor alignment)\n- WHO/UNICEF clinical protocols (such as the **Shake Test** or **VVM guidelines**)\n\nWhat cold chain questions or storage issues can I assist you with today?`;
+    return `Hello! What would you like to know about vaccine storage or your cold rooms?`;
   }
 
   return `I can only help with vaccine cold chain topics. For example:\n- *"How do I perform a shake test?"*\n- *"What are the storage guidelines for the polio vaccine?"*\n- *"What should I do if a chamber goes out of range?"*`;
