@@ -4,6 +4,7 @@ import { ColdRoom } from '../models/ColdRoom';
 import { Chamber }  from '../models/Chamber';
 import { Vaccine }  from '../models/Vaccine';
 import { AuthRequest } from '../middleware/auth';
+import { getRoomPower } from '../services/power';
 
 const router = Router();
 
@@ -16,13 +17,18 @@ router.get('/', async (req: AuthRequest, res) => {
       : {};
 
     const hospitals = await Hospital.find(query).lean();
-    const result = await Promise.all(hospitals.map(async h => ({
-      ...h,
-      id:              String(h._id),
-      coldRoomsCount: await ColdRoom.countDocuments({ hospitalId: h._id }),
-      chambersCount:  await Chamber.countDocuments({ hospitalId: h._id }),
-      vaccinesCount:  await Vaccine.countDocuments({ hospitalId: h._id }),
-    })));
+    const result = await Promise.all(hospitals.map(async h => {
+      const rooms = await ColdRoom.find({ hospitalId: h._id }).lean();
+      const power = await Promise.all(rooms.map(r => getRoomPower(r)));
+      return {
+        ...h,
+        id:              String(h._id),
+        coldRoomsCount: rooms.length,
+        chambersCount:  await Chamber.countDocuments({ hospitalId: h._id }),
+        vaccinesCount:  await Vaccine.countDocuments({ hospitalId: h._id }),
+        power:          power.filter(Boolean),
+      };
+    }));
     res.json(result);
   } catch (err) { res.status(500).json({ error: String(err) }); }
 });

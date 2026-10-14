@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { LiveReading } from '../types';
+import { LiveReading, PowerReading } from '../types';
 
 let socket: Socket | null = null;
 
@@ -28,4 +28,12 @@ export function subscribeToReadings(handler: LiveReadingHandler) {
     s.off('sensor_reading', handler);
     s.off('initial_readings', handler);
   };
+}
+
+export type PowerReadingHandler = (readings: PowerReading[]) => void;
+
+export function subscribeToPower(handler: PowerReadingHandler) {
+  const s = getSocket();
+  s.on('power_reading', handler);
+  return () => { s.off('power_reading', handler); };
 }

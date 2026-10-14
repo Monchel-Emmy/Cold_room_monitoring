@@ -14,6 +14,7 @@ const EMPTY = {
   type: 'walk_in_cooler',
   modelName: '',
   serialNumber: '',
+  deviceId: '',
   capacity: 0,
   usedCapacity: 0,
   capacityUnit: 'doses',
@@ -62,7 +63,7 @@ export default function ColdRooms() {
   };
 
   const openCreate = () => { setForm({ ...EMPTY, hospitalId: hospitals[0]?.id || '' }); setError(''); setModal('create'); };
-  const openEdit   = (r: ColdRoom) => { setSelected(r); setForm({ name: r.name, hospitalId: r.hospitalId, type: r.type, modelName: r.modelName, serialNumber: r.serialNumber, capacity: r.capacity, usedCapacity: r.usedCapacity, capacityUnit: r.capacityUnit, targetTempMin: r.targetTempMin, targetTempMax: r.targetTempMax, targetHumidityMin: r.targetHumidityMin, targetHumidityMax: r.targetHumidityMax, status: r.status }); setError(''); setModal('edit'); };
+  const openEdit   = (r: ColdRoom) => { setSelected(r); setForm({ name: r.name, hospitalId: r.hospitalId, type: r.type, modelName: r.modelName, serialNumber: r.serialNumber, deviceId: r.deviceId ?? '', capacity: r.capacity, usedCapacity: r.usedCapacity, capacityUnit: r.capacityUnit, targetTempMin: r.targetTempMin, targetTempMax: r.targetTempMax, targetHumidityMin: r.targetHumidityMin, targetHumidityMax: r.targetHumidityMax, status: r.status }); setError(''); setModal('edit'); };
   const openDelete = (r: ColdRoom) => { setSelected(r); setModal('delete'); };
   const closeModal = () => { setModal(null); setSelected(null); };
 
@@ -220,7 +221,7 @@ export default function ColdRooms() {
       {/* Create/Edit Modal */}
       <Modal open={modal === 'create' || modal === 'edit'} title={modal === 'create' ? 'Add Cold Room' : 'Edit Cold Room'} onClose={closeModal} size="lg">
         <div className="grid grid-cols-2 gap-3">
-          {[['Name *', 'name'], ['Model', 'modelName'], ['Serial Number', 'serialNumber']].map(([label, key]) => (
+          {[['Name *', 'name'], ['Model', 'modelName'], ['Serial Number', 'serialNumber'], ['IoT Device ID (e.g. RH09HZ)', 'deviceId']].map(([label, key]) => (
             <div key={key}>
               <label className="block text-xs font-semibold text-slate-400 mb-1">{label}</label>
               <input value={form[key]} onChange={f(key)} className="w-full bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500" />

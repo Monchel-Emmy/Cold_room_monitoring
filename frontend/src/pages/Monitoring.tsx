@@ -5,7 +5,8 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useLive } from '../components/Layout';
-import { Hospital, ColdRoom, Chamber, Vaccine } from '../types';
+import { Hospital, ColdRoom, Chamber, Vaccine, PowerReading } from '../types';
+import PowerPanel from '../components/PowerPanel';
 
 // ── Vaccine status badge ──────────────────────────────────────────────────────
 function VaccineBadge({ v }: { v: Vaccine }) {
@@ -92,9 +93,10 @@ function ChamberBlock({ chamber, liveTemp, liveHum }: {
 }
 
 // ── Cold Room column ──────────────────────────────────────────────────────────
-function ColdRoomColumn({ room, liveMap }: {
+function ColdRoomColumn({ room, liveMap, power }: {
   room: ColdRoom;
   liveMap: Map<string, { temp: number; humidity: number }>;
+  power: PowerReading | null;
 }) {
   const typeLabel: Record<string, string> = {
     walk_in_cooler: 'Walk-in Cooler',
@@ -125,6 +127,13 @@ function ColdRoomColumn({ room, liveMap }: {
         </div>
       </div>
 
+      {/* Power meter */}
+      {power && (
+        <div className="px-3 pt-3">
+          <PowerPanel p={power} />
+        </div>
+      )}
+
       {/* Chambers */}
       <div className="p-3 flex flex-col gap-3 overflow-y-auto flex-1">
         {(room.chambers?.length ?? 0) === 0 ? (
@@ -148,10 +157,11 @@ function ColdRoomColumn({ room, liveMap }: {
 }
 
 // ── Hospital section ──────────────────────────────────────────────────────────
-function HospitalSection({ hospital, rooms, liveMap }: {
+function HospitalSection({ hospital, rooms, liveMap, livePower }: {
   hospital: Hospital;
   rooms: ColdRoom[];
   liveMap: Map<string, { temp: number; humidity: number }>;
+  livePower: Map<string, PowerReading>;
 }) {
   return (
     <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl overflow-hidden">
@@ -178,7 +188,12 @@ function HospitalSection({ hospital, rooms, liveMap }: {
           <p className="text-slate-500 text-sm py-4">No cold rooms assigned.</p>
         ) : (
           rooms.map(r => (
-            <ColdRoomColumn key={r.id} room={r} liveMap={liveMap} />
+            <ColdRoomColumn
+              key={r.id}
+              room={r}
+              liveMap={liveMap}
+              power={livePower.get(r.id) ?? hospital.power?.find(p => p.coldRoomId === r.id) ?? null}
+            />
           ))
         )}
       </div>
@@ -191,7 +206,7 @@ export default function Monitoring() {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [roomsByHC,  setRoomsByHC]  = useState<Map<string, ColdRoom[]>>(new Map());
   const [loading,    setLoading]    = useState(true);
-  const { readings } = useLive();
+  const { readings, power: livePower } = useLive();
 
   const load = async () => {
     setLoading(true);
@@ -254,6 +269,7 @@ export default function Monitoring() {
           hospital={h}
           rooms={roomsByHC.get(h.id) ?? []}
           liveMap={liveMap}
+          livePower={livePower}
         />
       ))}
 

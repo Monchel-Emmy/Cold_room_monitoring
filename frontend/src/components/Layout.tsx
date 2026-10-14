@@ -3,12 +3,13 @@ import { Outlet, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import AIChatBubble from './AIChatBubble';
-import { getSocket, subscribeToReadings } from '../services/socket';
+import { getSocket, subscribeToReadings, subscribeToPower } from '../services/socket';
 import { useAuth } from '../context/AuthContext';
-import { LiveReading } from '../types';
+import { LiveReading, PowerReading } from '../types';
 
-interface LiveCtx { readings: Map<string, LiveReading>; connected: boolean; }
-const LiveContext = createContext<LiveCtx>({ readings: new Map(), connected: false });
+// readings: chamberId → latest reading; power: coldRoomId → latest power reading
+interface LiveCtx { readings: Map<string, LiveReading>; power: Map<string, PowerReading>; connected: boolean; }
+const LiveContext = createContext<LiveCtx>({ readings: new Map(), power: new Map(), connected: false });
 export const useLive = () => useContext(LiveContext);
 
 export default function Layout() {
@@ -16,6 +17,7 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [connected,   setConnected]   = useState(false);
   const [readings,    setReadings]    = useState<Map<string, LiveReading>>(new Map());
+  const [power,       setPower]       = useState<Map<string, PowerReading>>(new Map());
 
   const handleReadings = useCallback((data: LiveReading | LiveReading[]) => {
     const arr = Array.isArray(data) ? data : [data];
@@ -32,7 +34,14 @@ export default function Layout() {
     socket.on('disconnect', () => setConnected(false));
     setConnected(socket.connected);
     const unsub = subscribeToReadings(handleReadings);
-    return () => { unsub(); };
+    const unsubPower = subscribeToPower(data => {
+      setPower(prev => {
+        const next = new Map(prev);
+        data.forEach(p => next.set(p.coldRoomId, p));
+        return next;
+      });
+    });
+    return () => { unsub(); unsubPower(); };
   }, [handleReadings]);
 
   if (loading) return (
@@ -44,7 +53,7 @@ export default function Layout() {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <LiveContext.Provider value={{ readings, connected }}>
+    <LiveContext.Provider value={{ readings, power, connected }}>
       <div className="flex h-screen bg-slate-950 text-white overflow-hidden">
         <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

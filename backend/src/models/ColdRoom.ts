@@ -5,6 +5,7 @@ export interface IColdRoom extends Document {
   hospitalId: Types.ObjectId;
   modelName: string;
   serialNumber: string;
+  deviceId: string;       // room code sent by the IoT device (e.g. "RH09HZ"); empty = simulated
   type: 'walk_in_cooler' | 'refrigerator' | 'freezer' | 'ultra_cold';
   capacity: number;
   usedCapacity: number;
@@ -23,6 +24,7 @@ const schema = new Schema<IColdRoom>({
   hospitalId:        { type: Schema.Types.ObjectId, ref: 'Hospital', required: true },
   modelName:         { type: String, default: '' },
   serialNumber:      { type: String, default: '' },
+  deviceId:          { type: String, default: '', trim: true, index: true },
   type:              { type: String, enum: ['walk_in_cooler','refrigerator','freezer','ultra_cold'], default: 'walk_in_cooler' },
   capacity:          { type: Number, default: 0 },
   usedCapacity:      { type: Number, default: 0 },

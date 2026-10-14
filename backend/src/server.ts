@@ -17,6 +17,8 @@ import vaccineRoutes   from './routes/vaccines';
 import dashboardRoutes from './routes/dashboard';
 import alertRoutes     from './routes/alerts';
 import aiRoutes        from './routes/ai';
+import { createTelemetryRouter } from './routes/telemetry';
+import { simulatePowerStep } from './services/power';
 
 import { authenticate } from './middleware/auth';
 import { Chamber }       from './models/Chamber';
@@ -48,65 +50,8 @@ app.get('/api/health', (_req, res) => res.json({
   timestamp: new Date().toISOString(),
 }));
 
-app.post('/api/telemetry', async (req, res) => {
-  try {
-    const body = req.body ?? {};
-    const rawReadings = Array.isArray(body.readings)
-      ? body.readings
-      : Array.isArray(body.fridges)
-        ? body.fridges.map((item: any, index: number) => ({
-            sensorId: item.sensorId || item.ip || `ESP-${index + 1}`,
-            temperature: item.temperature,
-            humidity: item.humidity ?? body.room?.ambientHum ?? 0,
-            airQuality: body.room?.airQuality ?? 0,
-          }))
-        : [body];
-
-    if (!rawReadings.length) {
-      return res.status(400).json({ error: 'No sensor readings provided' });
-    }
-
-    const saved = await Promise.all(rawReadings.map(async (raw: any) => {
-      const sensorId = String(raw.sensorId ?? raw.id ?? raw.deviceId ?? '').trim();
-      if (!sensorId) return null;
-
-      const chamber = await Chamber.findOne({ sensorId }).lean();
-      if (!chamber) return null;
-
-      const reading = await SensorReading.create({
-        chamberId: chamber._id,
-        coldRoomId: chamber.coldRoomId,
-        hospitalId: chamber.hospitalId,
-        temperature: Number(raw.temperature ?? 0),
-        humidity: Number(raw.humidity ?? 0),
-        timestamp: new Date(),
-      });
-
-      return {
-        chamberId: String(chamber._id),
-        coldRoomId: String(chamber.coldRoomId),
-        sensorId,
-        temperature: reading.temperature,
-        humidity: reading.humidity,
-        timestamp: reading.timestamp.toISOString(),
-      };
-    }));
-
-    const validReadings = saved.filter(Boolean);
-    if (validReadings.length) {
-      io.emit('sensor_reading', validReadings);
-    }
-
-    return res.json({
-      ok: true,
-      saved: validReadings.length,
-      readings: validReadings,
-    });
-  } catch (error) {
-    console.error('Telemetry ingestion error:', error);
-    return res.status(500).json({ error: 'Failed to store telemetry data' });
-  }
-});
+// IoT devices post sensor + power data here (authenticated with DEVICE_API_KEY)
+app.use('/api/telemetry', createTelemetryRouter(io));
 
 // ── Protected routes (require valid JWT) ──────────────────────────────────────
 app.use('/api/users',      authenticate, userRoutes);
@@ -144,6 +89,10 @@ io.on('connection', async socket => {
 });
 
 // ── Simulate live sensor drift every 8 seconds ────────────────────────────────
+// Cold rooms linked to a real IoT device (deviceId set) are skipped — their data
+// only comes from POST /api/telemetry. All other rooms get random demo data.
+const SIMULATE_INTERVAL_MS = 8000;
+
 // Kibagabaga cold rooms use fixed temperatures:
 //   Cold Room RH09HZ (room 1) → all chambers ~10.0°C
 //   Cold Room B      (room 2) → all chambers ~7.1°C
@@ -168,7 +117,11 @@ setInterval(async () => {
       }
     }
 
-    const chambers = await Chamber.find().lean();
+    const allRooms = await ColdRoomModel.find().lean();
+    const simulatedRooms = allRooms.filter(r => !r.deviceId);
+    const simulatedRoomIds = simulatedRooms.map(r => r._id);
+
+    const chambers = await Chamber.find({ coldRoomId: { $in: simulatedRoomIds } }).lean();
     const updates = await Promise.all(chambers.map(async ch => {
       const last = await SensorReading
         .findOne({ chamberId: ch._id })
@@ -182,12 +135,16 @@ setInterval(async () => {
         // Kibagabaga fixed room: tiny ±0.05°C noise so it looks live
         newTemp = parseFloat((fixedTemp + (Math.random() - 0.5) * 0.1).toFixed(1));
       } else {
-        const baseTemp = last?.temperature ?? ((ch.targetTempMin + ch.targetTempMax) / 2);
-        newTemp = parseFloat((baseTemp + (Math.random() - 0.5) * 0.4).toFixed(1));
+        // Random walk that drifts back toward the middle of the target range
+        const midTemp  = (ch.targetTempMin + ch.targetTempMax) / 2;
+        const baseTemp = last?.temperature ?? midTemp;
+        newTemp = parseFloat((baseTemp + (midTemp - baseTemp) * 0.1 + (Math.random() - 0.5) * 0.4).toFixed(1));
       }
 
-      const baseHum = last?.humidity ?? ((ch.targetHumidityMin + ch.targetHumidityMax) / 2);
-      const newHum  = parseFloat((baseHum + (Math.random() - 0.5) * 1.5).toFixed(1));
+      const midHum  = (ch.targetHumidityMin + ch.targetHumidityMax) / 2;
+      const baseHum = last?.humidity ?? midHum;
+      const newHum  = parseFloat(Math.min(100, Math.max(0,
+        baseHum + (midHum - baseHum) * 0.1 + (Math.random() - 0.5) * 1.5)).toFixed(1));
 
       await SensorReading.create({
         chamberId:   ch._id,
@@ -207,10 +164,11 @@ setInterval(async () => {
       };
     }));
     io.emit('sensor_reading', updates);
+    io.emit('power_reading', simulatedRooms.map(r => simulatePowerStep(r, SIMULATE_INTERVAL_MS)));
   } catch (err) {
     console.error('[Simulate] Error:', err);
   }
-}, 8000);
+}, SIMULATE_INTERVAL_MS);
 
 server.listen(PORT, () => {
   console.log(`🚀 Cold Room Monitoring API → http://localhost:${PORT}`);

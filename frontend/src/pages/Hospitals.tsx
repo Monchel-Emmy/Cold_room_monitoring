@@ -3,7 +3,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, MapPin, Phone, Snowflake, Plus, Pencil, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Hospital } from '../types';
+import { Hospital, PowerReading } from '../types';
+import { useLive } from '../components/Layout';
+import PowerPanel from '../components/PowerPanel';
 import Modal from '../components/Modal';
 import { TableSkeleton } from '../components/Skeleton';
 
@@ -22,6 +24,20 @@ export default function Hospitals() {
   const [form,      setForm]      = useState<any>(EMPTY);
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState('');
+  const { power: livePower } = useLive();
+
+  // Merge the API snapshot with newer live values, keyed by cold room
+  const powerFor = (h: Hospital): PowerReading[] => {
+    const rooms = new Map<string, PowerReading>();
+    (h.power ?? []).forEach(p => rooms.set(p.coldRoomId, p));
+    livePower.forEach(p => {
+      if (p.hospitalId !== h.id) return;
+      const known = rooms.get(p.coldRoomId);
+      rooms.set(p.coldRoomId, { ...p, coldRoomName: p.coldRoomName ?? known?.coldRoomName });
+    });
+    // Real devices first
+    return [...rooms.values()].sort((a, b) => Number(b.isDevice) - Number(a.isDevice));
+  };
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['hospitals'] });
@@ -109,6 +125,11 @@ export default function Hospitals() {
                   <span className="flex items-center gap-1 text-cyan-400"><Snowflake size={10} /> {h.coldRoomsCount ?? 0} rooms</span>
                   <span className={`px-2 py-0.5 rounded-full border capitalize text-[10px] font-semibold ${h.status === 'active' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-slate-600/40 text-slate-400 border-slate-600'}`}>{h.status}</span>
                 </div>
+                {powerFor(h).length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {powerFor(h).map(p => <PowerPanel key={p.coldRoomId} p={p} showRoomName />)}
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -38,6 +38,7 @@ export interface Hospital {
   coldRoomsCount?: number;
   chambersCount?: number;
   vaccinesCount?: number;
+  power?: PowerReading[];
 }
 
 // ── Cold Room ─────────────────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ export interface ColdRoom {
   hospitalName?: string;
   modelName: string;
   serialNumber: string;
+  deviceId?: string;
   type: 'walk_in_cooler' | 'refrigerator' | 'freezer' | 'ultra_cold';
   capacity: number;
   usedCapacity: number;
@@ -157,4 +159,18 @@ export interface LiveReading {
   temperature: number;
   humidity: number;
   timestamp: string;
+}
+
+// ── Power reading (per cold room, from device or simulator) ───────────────────
+export interface PowerReading {
+  coldRoomId: string;
+  hospitalId: string;
+  coldRoomName?: string;
+  voltage: number;    // V
+  current: number;    // A
+  power: number;      // W
+  energyKwh: number;  // kWh
+  alarm: boolean;
+  timestamp: string;
+  isDevice: boolean;  // true = real IoT device
 }
